@@ -74,9 +74,9 @@ export const aiSummariseCommit = async (diff: string) => {
         ### Output Format:
         1. Use a clear and concise bullet-point structure.
         2. Summarise changes per file, like this:
-            - **File:** <filename>
-                - **Change Type:** Modified/New/Deleted
-                - **Summary:** Describe what was added/removed/modified and why.
+            * File: <filename>
+                * Change Type: Modified/New/Deleted
+                * Summary: Describe what was added/removed/modified and why.
         
         ---
         
