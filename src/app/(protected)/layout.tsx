@@ -19,7 +19,7 @@ const layout = ({ children }: Props) => {
         </div>
         <div className="h-4"> </div>
         {/* MAIN-CONTENT */}
-        <div className="h-[calc(100vh-6rem)] overflow-y-hidden rounded-md border border-sidebar-border bg-sidebar p-4 shadow">
+        <div className="h-[calc(100vh-6rem)] overflow-y-scroll rounded-md border border-sidebar-border bg-sidebar p-4 shadow">
           {" "}
           {/* overflow-y-scroll */}
           {children}
