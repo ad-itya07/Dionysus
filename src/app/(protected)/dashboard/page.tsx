@@ -2,6 +2,7 @@
 import useProject from "@/hooks/use-project";
 import { ExternalLink, Github} from "lucide-react";
 import Link from "next/link";
+import CommitLog from "./_components/CommitLog";
 
 type Props = {};
 
@@ -49,7 +50,7 @@ const page = ({}: Props) => {
 
       <div className="mt-8"></div>
 
-      Commit log
+      <CommitLog />
     </div>
   );
 };
