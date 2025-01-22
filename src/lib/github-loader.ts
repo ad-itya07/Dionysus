@@ -11,16 +11,15 @@ export const loadGithubRepo = async (
     accessToken: githubToken || "",
     branch: "main",
     ignoreFiles: [
-      "package.json",
       "package-lock.json",
-      "yarn.lock",
+      "yark.lock",
       "pnpm-lock.yaml",
+      "bun.lockb",
     ],
-    recursive: true, // Load all files in the repo, by default only the root directory is loaded, not the files inside it
+    recursive: true,
     unknown: "warn",
     maxConcurrency: 5,
   });
-
   const docs = await loader.load();
   return docs;
 };
@@ -31,11 +30,12 @@ export const indexGithubRepo = async (
   githubToken?: string,
 ) => {
   const docs = await loadGithubRepo(githubUrl, githubToken);
-  const allEmbeddings = await generateEmbeddings(docs); // this func here does two things, gets the summary of the code, as well as the embeddings.
+
+  const allEmbeddings = await generateEmbeddings(docs);
 
   await Promise.allSettled(
     allEmbeddings.map(async (embedding, index) => {
-      console.log(`processing ${index} of ${allEmbeddings.length - 1}`);
+      console.log(`processing ${index} of ${allEmbeddings.length}`);
 
       if (!embedding) return;
 
@@ -44,15 +44,15 @@ export const indexGithubRepo = async (
           summary: embedding.summary,
           sourceCode: embedding.sourceCode,
           fileName: embedding.fileName,
-          projectId: projectId,
+          projectId,
         },
       });
 
       await db.$executeRaw`
-      UPDATE "SourceCodeEmbedding"
-      SET "summaryEmbedding" = ${embedding.embedding}::vector
-      WHERE "id" = ${sourceCodeEmbedding.id}
-      `;
+        UPDATE "SourceCodeEmbedding"
+        SET "summaryEmbedding"=${embedding.embedding}::vector
+        WHERE "id"=${sourceCodeEmbedding.id}
+        `;
     }),
   );
 };

@@ -7,113 +7,59 @@ const model = genAI.getGenerativeModel({
 });
 
 export const aiSummariseCommit = async (diff: string) => {
-  // https:github.com/docker/dionysus/commit/<commitHash>.diff
-  const reponse = await model.generateContent([
-    `You are an expert programmer, and your task is to summarise the changes in a Git diff. Below are some reminders and guidelines about the Git diff format and the summarisation process:
-
-        ### Git Diff Format:
-        1. **Metadata Lines**:
-            - Each file in the diff starts with metadata lines that include:
-                \`\`\`
-                diff --git a/<filepath> b/<filepath>
-                index <hash1>..<hash2> <filemode>
-                --- a/<filepath>
-                +++ b/<filepath>
-                \`\`\`
-            - These lines indicate the file being modified and its state before and after the changes.
-        
-        2. **Change Indicators**:
-            - Lines that start with:
-                - **"+"**: Added lines.
-                - **"-"**: Removed lines.
-                - **" " (space)**: Unchanged lines for context.
-            - Example:
-                \`\`\`
-                - function oldFunction() {
-                + function newFunction() {
-                \`\`\`
-        
-        3. **File Creation/Deletion**:
-            - For new files:
-                \`\`\`
-                new file mode <filemode>
-                \`\`\`
-            - For deleted files:
-                \`\`\`
-                deleted file mode <filemode>
-                \`\`\`
-        
-        4. **Hunks**:
-            - Each hunk begins with a line like:
-                \`\`\`
-                @@ -<start-line-old>,<line-count-old> +<start-line-new>,<line-count-new> @@
-                \`\`\`
-            - This shows where changes have occurred in the file.
-        
-        ---
-        
-        ### Instructions for Summarisation:
-        1. **For Each File**:
-            - Mention the filename and summarize the key changes (e.g., additions, deletions, modifications).
-            - If the file is new or deleted, explicitly state this.
-        
-        2. **Content Changes**:
-            - Highlight key changes in the code logic, structure, or functionality.
-            - If specific functions, variables, or classes were modified, mention their names and the nature of the change (e.g., added a parameter, changed return type, fixed a bug).
-        
-        3. **Purpose of Changes**:
-            - If possible, infer the purpose of the changes based on the diff. For example:
-                - "Refactored code for better readability."
-                - "Fixed a bug in the login functionality."
-                - "Added a new API endpoint for user authentication."
-        
-        4. **Ignore Noisy Changes**:
-            - Skip insignificant changes like formatting or whitespace (unless they dominate the diff).
-        
-        ---
-        
-        ### Output Format:
-        1. Use a clear and concise bullet-point structure.
-        2. Summarise changes per file, like this:
-            * File: <filename>
-                * Change Type: Modified/New/Deleted
-                * Summary: Describe what was added/removed/modified and why.
-        
-        ---
-        
-        Most of the commits will have less comments than this examples list.
-        The last comment doesnot include the file names because there were more than two relevant files in the hypothetical commit.
-        Does not include parts of the example in your summary.
-        It is given only as an example of appropriate comments.
-        Now, using the above guidelines, generate a summary of the following diff file: \n\n\n${diff}
-            `,
+  const response = await model.generateContent([
+    `You are an expert programmer, and you are trying to summarize a git diff.
+        Reminders about the git diff format:
+        For every file, there are a few metadata lines, like (for example):
+        \`\`\`
+        diff -- git a/lib/index.js b/lib/index.js
+        index aadf691 .. bfef603 100644
+        --- a/lib/index.js
+        +++ b/lib/index.js
+        \`\`\`
+        This means that \'lib/index.js\' was modified in this commit. Note that this is only an example.
+        Then there is a specifier of the lines that were modified.
+        A line starting with \'+\' means it was added.
+        A line that starting with \'-\' means that line was deleted.
+        A line that starts with neither \'+\' nor \'-\' is code given for context and better understanding.
+        It is not part of the diff.
+        [ ... ]
+        EXAMPLE SUMMARY COMMENTS:
+        \`\`\`
+        . Raised the amount of returned recordings from \'10\ to \'100\' [packages/server/recordings_api.ts], [packages/server/constants.ts]
+        . Fixed a typo in the github action name [.github/workflows/gpt-commit-summarizer.yml]
+        . Moved the \'octokit\ initialization to a separate file [src/ootokit.ts], [src/index.ts]
+        . Added an OpenAI API for completions [packages/utils/apis/openai.ts]
+        . Lowered numeric tolerance for test files
+        Most commits will have less comments than this examples list.
+        The last comment does not include the file names,
+        because there were more than two relevant files in the hypothetical commit.
+        Do not include parts of the example in your summary.
+        It is given only as an example of appropriate comments. `,
+    `Please summarise the following diff file: \n\n${diff}`,
   ]);
 
-  return reponse.response.text();
+  return response.response.text();
 };
 
 export const summariseCode = async (doc: Document) => {
   console.log("getting summary for", doc.metadata.source);
-  //   try {
-  const code = doc.pageContent.slice(0, 10000);
-  const response = await model.generateContent([
-    `You are an intelligent senior software engineer who specialises in onboarding junior software engineers onto projects.
-        You are onboarding a junior software engineer and explaining to them he purpose of the ${doc.metadata.source} file.
-        Here is the code snippet:
-        
-        ---
-        
-        ${code}
-        
-        ---
-        
-        Give a summary no more than 100 words of the code above`,
-  ]);
 
-  return response.response.text();
-  //   } catch (error) {
-  // return "error";
-  //   }
+  try {
+    const code = doc.pageContent.slice(0, 10000);
+    const response = await model.generateContent([
+      `You are an intelligent senior software engineer who specialises in onboarding junior software engineers onto projects`,
+      `You are onboarding a junior software engineer and explaining to them the purpose of the ${doc.metadata.source} file
+            Here is the code:
+            ---
+            ${code}
+            ---
+            Give a summary no more than 100 words of the code above`,
+    ]);
+    return response.response.text();
+  } catch (error) {
+    return "";
+  }
 };
 
 export const generateEmbedding = async (summary: string) => {
