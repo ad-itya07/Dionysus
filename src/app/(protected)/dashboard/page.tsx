@@ -3,6 +3,7 @@ import useProject from "@/hooks/use-project";
 import { ExternalLink, Github} from "lucide-react";
 import Link from "next/link";
 import CommitLog from "./_components/CommitLog";
+import AskQuestionCard from "./_components/AskQuestionCard";
 
 type Props = {};
 
@@ -43,7 +44,7 @@ const page = ({}: Props) => {
 
       <div className="mt-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
-          Ask QSN CARD
+          <AskQuestionCard />
           Meeting card
         </div>
       </div>
