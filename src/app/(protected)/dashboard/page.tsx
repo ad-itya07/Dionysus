@@ -6,8 +6,10 @@ import CommitLog from "./_components/CommitLog";
 import AskQuestionCard from "./_components/AskQuestionCard";
 import MeetingCard from "./_components/MeetingCard";
 import ArchiveButton from "./_components/ArchiveButton";
-import InviteButton from "./_components/InviteButton";
+const InviteButton=dynamic(()=>import('./_components/InviteButton'),{ssr:false});
+
 import TeamMembers from "./_components/TeamMembers";
+import dynamic from "next/dynamic";
 
 type Props = {};
 
