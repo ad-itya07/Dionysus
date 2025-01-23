@@ -4,6 +4,7 @@ import { ExternalLink, Github} from "lucide-react";
 import Link from "next/link";
 import CommitLog from "./_components/CommitLog";
 import AskQuestionCard from "./_components/AskQuestionCard";
+import MeetingCard from "./_components/MeetingCard";
 
 type Props = {};
 
@@ -45,7 +46,7 @@ const page = ({}: Props) => {
       <div className="mt-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-5">
           <AskQuestionCard />
-          Meeting card
+          <MeetingCard />
         </div>
       </div>
 
