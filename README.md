@@ -1,29 +1,92 @@
-# Create T3 App
+# Dionysus
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+**Dionysus** is an AI-powered GitHub SaaS client designed to revolutionize project collaboration and management. With Dionysus, users can seamlessly integrate their GitHub repositories, explore commit histories, interact with AI to learn more about their projects, and manage their teams effectively. This platform leverages cutting-edge AI to simplify and enhance workflows, making teamwork effortless and efficient.
 
-## What's next? How do I make an app with this?
+## Live Website
+Visit the live platform here: [Dionysus](https://dionysus-se36.vercel.app/)
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+---
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## Key Features
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+### 1. **GitHub Integration**
+- Link your projects directly using your GitHub repository URL.
+- View and analyze the complete commit history of your repository.
+- Ask AI-powered questions about your repository and its functionalities to gain insights and improve understanding.
 
-## Learn More
+### 2. **AI-Powered Audio Transcription and Summarization**
+- Upload audio files of your meetings.
+- Get a transcript of the audio file with time stamps.
+- Receive a concise AI-generated summary of the meeting, powered by **Assembly AI**.
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+### 3. **Team Collaboration**
+- Invite team members to work on projects collaboratively.
+- Generate a unique invitation URL for each project. When another Dionysus user clicks the URL, they can join the project and start collaborating.
+- Share your project and work together seamlessly.
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+### 4. **AI Assistance**
+- AI responses and functionalities powered by **Gemini AI** to assist with repository-related queries and insights.
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+### 5. **Credit System for Pricing**
+- Pricing is based on a credit system:
+  - Purchase 50 credits for 75 INR.
+  - Each audio file upload deducts 1 credit.
 
-## How do I deploy this?
+### 6. **Authentication**
+- User authentication is powered by **Clerk** for secure and seamless login and account management.
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+---
+
+## Pricing
+- **Credits:**
+  - 50 credits cost **75 INR**.
+  - Each file upload consumes **1 credit**.
+
+---
+
+## Tech Stack
+
+### Frontend
+- Developed using **React** and deployed on **Vercel**.
+
+### Backend
+- AI transcription is handled by **Assembly AI**.
+- AI responses and interactions are powered by **Gemini AI**.
+
+### Authentication
+- User authentication is managed through **Clerk**.
+
+---
+
+## How to Use
+
+### Step 1: Link Your GitHub Repository
+- Copy your GitHub repository URL and paste it on the platform to link your project.
+
+### Step 2: Explore and Interact
+- View commit histories.
+- Use AI to ask questions about your repository and understand its functionalities.
+
+### Step 3: Upload Audio Files
+- Upload audio recordings of your meetings.
+- Receive transcripts with timestamps and AI-generated summaries.
+
+### Step 4: Collaborate with Your Team
+- Use the "Invite Team Members" feature to share your project.
+- Generate an invitation URL and share it with your team. Once they click the link and join Dionysus, they can collaborate on your project.
+
+---
+
+## Getting Started
+
+1. Visit the live platform: [Dionysus](https://dionysus-se36.vercel.app/).
+2. Sign up or log in using **Clerk** authentication.
+3. Purchase credits to start using the platform, by default each user will be given 150 credits.
+4. Link your GitHub repository to get started.
+5. Collaborate, upload, and manage your projects effectively.
+
+---
+
+## Contact
+For any queries or support, feel free to reach out via the platform’s support section.
+
