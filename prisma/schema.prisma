@@ -28,7 +28,7 @@ model User {
 
     questionsAsked Question[]
 
-    paypalTransactions PaypalTransaction[]
+    stripeTransactions StripeTransaction[]
 }
 
 model Project {
@@ -148,7 +148,7 @@ enum MeetingStatus {
     COMPLETED
 }
 
-model PaypalTransaction {
+model StripeTransaction {
     id        String   @id @default(cuid())
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
