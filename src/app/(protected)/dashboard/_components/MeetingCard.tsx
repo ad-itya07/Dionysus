@@ -20,6 +20,7 @@ const MeetingCard = () => {
   const uploadMeeting = api.project.uploadMeeting.useMutation();
   const { project } = useProject();
 
+  // MEETING AUDIO PROCESSING FUCNTION USING ASSEMBLY-AI
   const processMeeting = useMutation({
     mutationFn: async (data: {
       meetingUrl: string;
@@ -27,6 +28,7 @@ const MeetingCard = () => {
       projectId: string;
     }) => {
       const { meetingUrl, meetingId, projectId } = data;
+      // hitting the /api/process-meeting endpoint to process the meeting
       const response = await axios.post("/api/process-meeting", {
         meetingUrl,
         meetingId,
@@ -36,6 +38,7 @@ const MeetingCard = () => {
     },
   });
 
+  // using react drop zone for audio upload and 
   const { getRootProps, getInputProps } = useDropzone({
     accept: {
       "audio/*": [".mp3", ".wav", ".m4a"],
@@ -44,10 +47,14 @@ const MeetingCard = () => {
     maxSize: 50_000_000,
     onDrop: async (acceptedFiles) => {
       if (!project) return;
+
       setIsUploading(true);
       console.log(acceptedFiles);
+
       const file = acceptedFiles[0];
       if (!file) return;
+
+      // after getting file, now upload it to cloudinary
       const downloadURL = (await uploadFile(
         file as File,
         setProgress,
@@ -62,6 +69,7 @@ const MeetingCard = () => {
           onSuccess: (meeting) => {
             toast.success("Meeting uploaded successfully");
             router.push("/meetings");
+            // after successfull-upload, now callng the processMeeting mutation 
             processMeeting.mutateAsync({
               meetingUrl: downloadURL,
               meetingId: meeting.id,
@@ -77,6 +85,7 @@ const MeetingCard = () => {
       setIsUploading(false);
     },
   });
+  
   return (
     <Card
       className="col-span-2 flex flex-col items-center justify-center p-10"
@@ -110,8 +119,8 @@ const MeetingCard = () => {
             text={`${progress}%`}
             className="size-20"
             styles={buildStyles({
-              pathColor: "#2563eb",
-              textColor: "#2563eb",
+              pathColor: "black",
+              textColor: "black",
             })}
           />
           <p className="text-center text-sm text-gray-500">
