@@ -1,22 +1,33 @@
 "use client";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import useRefetch from "@/hooks/use-refetch";
 import { api } from "@/trpc/react";
-import { FormInput } from "@/types/FormInput";
-import { FileWarning, Info } from "lucide-react";
+import { Info } from "lucide-react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-type Props = {};
+type FormInput = {
+  repoUrl: string;
+  projectName: string;
+  githubToken?: string;
+};
 
-const page = ({}: Props) => {
+const CreatePage = () => {
   const { register, handleSubmit, reset } = useForm<FormInput>();
   const createProject = api.project.createProject.useMutation();
   const checkCredits = api.project.checkCredits.useMutation();
-
   const refetch = useRefetch();
+
+  const [projectId, setProjectId] = React.useState<string | null>(null);
+
+  const { refetch: refetchCommits } = api.project.getCommits.useQuery(
+    { projectId: projectId ?? "" },
+    {
+      enabled: false,
+    },
+  );
 
   function onSubmit(data: FormInput) {
     if (!!checkCredits.data) {
@@ -27,12 +38,17 @@ const page = ({}: Props) => {
           githubToken: data.githubToken,
         },
         {
-          onSuccess: () => {
+          onSuccess: async (project) => {
             toast.success("Project created successfully");
+            setProjectId(project.id);
+            await new Promise((res) => setTimeout(res, 500)); // optional delay
+
+            // Fetch commits (includes summaries)
+            await refetchCommits();
             refetch();
             reset();
           },
-          onError: () => {
+          onError: (error) => {
             toast.error("Failed to create project");
           },
         },
@@ -43,38 +59,26 @@ const page = ({}: Props) => {
         githubToken: data.githubToken,
       });
     }
-
-    return true;
   }
 
   const hasEnoughCredits = checkCredits?.data?.userCredits
     ? checkCredits.data.fileCount <= checkCredits.data.userCredits
     : true;
+
   return (
-    <div className="flex h-full items-center justify-center gap-12">
-      <img src="/undraw_developer.svg" className="h-56 w-auto" />
+    <div className="flex flex-col-reverse items-center justify-center gap-8 px-4 lg:flex-row lg:gap-12 lg:px-0 lg:py-20">
+      <img src="/undraw_github.svg" className="h-56 w-auto" alt="hero image" />
       <div>
         <div>
           <h1 className="text-2xl font-semibold">
-            Link your Github Repository
+            Link your GitHub Repository.
           </h1>
           <p className="text-sm text-muted-foreground">
-            Enter the URL of your repository to link it to Dionysus
+            Enter the URL of your GitHub repository to link the Dionysus.
           </p>
         </div>
-
-        <div className="h4"></div>
-
+        <div className="h-4"></div>
         <div>
-          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-2 mb-2 text-red-700">
-            <div className="flex items-center gap-2">
-              <FileWarning className="size-4" />
-              <p className="text-sm">
-                It is suggested to link repository with {" "}
-                <strong> less than 50 files</strong> for best experience.
-              </p>
-            </div>
-          </div>
           <form onSubmit={handleSubmit(onSubmit)}>
             <Input
               {...register("projectName", { required: true })}
@@ -86,7 +90,7 @@ const page = ({}: Props) => {
 
             <Input
               {...register("repoUrl", { required: true })}
-              placeholder="Github URL"
+              placeholder="GitHub Repository URL"
               type="url"
               required
             />
@@ -95,24 +99,28 @@ const page = ({}: Props) => {
 
             <Input
               {...register("githubToken")}
-              placeholder="Github Token (optional)"
+              placeholder="GitHub Token (Optional)"
             />
 
             {!!checkCredits.data && (
-              <div className="mt-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-2 text-orange-700">
-                <div className="flex items-center gap-2">
-                  <Info className="size-4" />
-                  <p className="text-sm">
-                    You will be charged{" "}
-                    <strong>{checkCredits.data?.fileCount}</strong> credits for
-                    this repository.
+              <>
+                <div className="mt-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-2 text-orange-700">
+                  <div className="items center flex gap-2">
+                    <Info className="size-4" />
+                    <p className="text-sm">
+                      You will be charged{" "}
+                      <strong>{checkCredits.data?.fileCount}</strong> credits
+                      for this repository. <br />
+                      If you don't have a GitHub token, creating project <br />
+                      may restricted to <strong>60</strong> credits per hour.
+                    </p>
+                  </div>
+                  <p className="ml-6 text-sm text-blue-600">
+                    You have <strong>{checkCredits.data?.userCredits}</strong>{" "}
+                    credits remaining.
                   </p>
                 </div>
-                <p className="ml-6 text-sm text-blue-600">
-                  You have <strong>{checkCredits.data?.userCredits}</strong>{" "}
-                  credits remaining.
-                </p>
-              </div>
+              </>
             )}
 
             <div className="h-4"></div>
@@ -134,4 +142,4 @@ const page = ({}: Props) => {
   );
 };
 
-export default page;
+export default CreatePage;
