@@ -20,19 +20,19 @@ export async function createCheckoutSession(credits: number) {
     line_items: [
       {
         price_data: {
-          currency: "usd",
+          currency: "inr",
           product_data: {
             name: `${credits} Dionysus Credits`,
           },
-          unit_amount: Math.round((credits / 50) * 100),
+          unit_amount: Math.round((credits / 2) * 3 * 100),
         },
         quantity: 1,
       },
     ],
     customer_creation: "always",
     mode: "payment",
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/create`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+    success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/create`,
+    cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/billing`,
     client_reference_id: userId.toString(),
     metadata: {
       credits,
