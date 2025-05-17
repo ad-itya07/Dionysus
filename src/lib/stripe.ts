@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -10,9 +11,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function createCheckoutSession(credits: number) {
   const { userId } = await auth();
-
   if (!userId) {
-    throw new Error("Unauthorized!");
+    throw new Error("User not authenticated");
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -20,19 +20,19 @@ export async function createCheckoutSession(credits: number) {
     line_items: [
       {
         price_data: {
-          currency: "inr",
+          currency: "usd",
           product_data: {
             name: `${credits} Dionysus Credits`,
           },
-          unit_amount: Math.round((credits / 50) * 75 * 100),
+          unit_amount: Math.round((credits / 50) * 100),
         },
         quantity: 1,
       },
     ],
     customer_creation: "always",
     mode: "payment",
-    success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/create`,
-    cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/billing`,
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/create`,
+    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
     client_reference_id: userId.toString(),
     metadata: {
       credits,
