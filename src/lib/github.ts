@@ -49,11 +49,13 @@ export async function getCommitHashes(
 
 /**
  * Poll and process commits for a project
+ * Only summarizes last 6-8 commits with AI, uses commit message for older ones
  */
 export async function pollCommits(
   projectId: string,
   githubToken?: string,
-): Promise<{ count: number }> {
+  maxCommitsToSummarize: number = 8,
+): Promise<{ count: number; summarized: number }> {
   const project = await db.project.findUnique({
     where: { id: projectId },
     select: { githubUrl: true },
@@ -76,16 +78,20 @@ export async function pollCommits(
 
   if (unprocessedCommits.length === 0) {
     console.log(`✅ No new commits to process for project ${projectId}`);
-    return { count: 0 };
+    return { count: 0, summarized: 0 };
   }
 
   console.log(
-    `📝 Processing ${unprocessedCommits.length} new commits...`,
+    `📝 Processing ${unprocessedCommits.length} new commits (summarizing first ${Math.min(maxCommitsToSummarize, unprocessedCommits.length)})...`,
   );
 
-  // Process commits with summaries (with concurrency limit)
-  const commitsWithSummaries = await Promise.all(
-    unprocessedCommits.map((commit) =>
+  // Split commits: first 6-8 get AI summaries, rest use commit message
+  const commitsToSummarize = unprocessedCommits.slice(0, maxCommitsToSummarize);
+  const commitsWithMessageOnly = unprocessedCommits.slice(maxCommitsToSummarize);
+
+  // Process commits with AI summaries (with concurrency limit)
+  const summarizedCommits = await Promise.all(
+    commitsToSummarize.map((commit) =>
       limit(async () => {
         try {
           const summary = await summariseCommit(
@@ -99,19 +105,28 @@ export async function pollCommits(
             `❌ Failed to summarize commit ${commit.commitHash}:`,
             err instanceof Error ? err.message : String(err),
           );
-          // Return with fallback summary instead of empty
+          // Return with commit message as fallback
           return {
             ...commit,
-            summary: `Commit: ${commit.commitMessage.split("\n")[0]}`,
+            summary: commit.commitMessage.split("\n")[0],
           };
         }
       }),
     ),
   );
 
+  // Process older commits with just commit message (no AI call)
+  const commitsWithMessages = commitsWithMessageOnly.map((commit) => ({
+    ...commit,
+    summary: commit.commitMessage.split("\n")[0], // Use first line of commit message
+  }));
+
+  // Combine all commits
+  const allCommitsWithSummaries = [...summarizedCommits, ...commitsWithMessages];
+
   // Insert commits (using createMany with skipDuplicates)
   const result = await db.commit.createMany({
-    data: commitsWithSummaries.map((commit) => ({
+    data: allCommitsWithSummaries.map((commit) => ({
       projectId: projectId,
       commitHash: commit.commitHash,
       commitMessage: commit.commitMessage,
@@ -124,10 +139,10 @@ export async function pollCommits(
   });
 
   console.log(
-    `✅ Successfully processed ${result.count} commits for project ${projectId}`,
+    `✅ Successfully processed ${result.count} commits for project ${projectId} (${summarizedCommits.length} with AI summaries)`,
   );
 
-  return { count: result.count };
+  return { count: result.count, summarized: summarizedCommits.length };
 }
 
 /**

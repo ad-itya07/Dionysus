@@ -93,21 +93,21 @@ export async function summariseCommit(
       console.warn(
         `⚠️ Timeout or error fetching diff for ${commitHash}, using fallback`,
       );
-      // Get commit message for fallback
-      const commits = await client.getAllCommits(owner, repo, 1);
+      // Get commit message for fallback - fetch more commits to find the right one
+      const commits = await client.getAllCommits(owner, repo, 100);
       const commit = commits.find((c) => c.commitHash === commitHash);
       return generateCommitFallback(
-        commit?.commitMessage || "Commit",
+        commit?.commitMessage || `Commit ${commitHash.slice(0, 7)}`,
         undefined,
       );
     }
 
     // Validate and truncate diff
     if (!diff || diff.trim().length === 0) {
-      const commits = await client.getAllCommits(owner, repo, 1);
+      const commits = await client.getAllCommits(owner, repo, 100);
       const commit = commits.find((c) => c.commitHash === commitHash);
       return generateCommitFallback(
-        commit?.commitMessage || "Commit",
+        commit?.commitMessage || `Commit ${commitHash.slice(0, 7)}`,
         undefined,
       );
     }
@@ -155,10 +155,10 @@ export async function summariseCommit(
     try {
       const { owner, repo } = parseGithubUrl(githubUrl);
       const client = new GitHubClient({ token: githubToken });
-      const commits = await client.getAllCommits(owner, repo, 10);
+      const commits = await client.getAllCommits(owner, repo, 100);
       const commit = commits.find((c) => c.commitHash === commitHash);
       return generateCommitFallback(
-        commit?.commitMessage || "Commit",
+        commit?.commitMessage || `Commit ${commitHash.slice(0, 7)}`,
         undefined,
       );
     } catch {
@@ -192,7 +192,27 @@ export async function summariseCode(
 
     const summaryPromise = retryWithBackoff(
       async () => {
-        return await aiSummariseCode(doc);
+        // Get unique summary for this file
+        const uniqueSummary = await aiSummariseCode(doc);
+        
+        // Validate it's not a generic/cached response
+        // Check if summary mentions react-dom but file doesn't
+        if (
+          uniqueSummary.toLowerCase().includes("react-dom.development") &&
+          !fileName.toLowerCase().includes("react-dom")
+        ) {
+          console.warn(
+            `⚠️ Suspicious generic summary detected for ${fileName}, retrying...`,
+          );
+          throw new Error("Generic summary detected, retrying");
+        }
+        
+        // Validate summary is meaningful (not too short)
+        if (uniqueSummary.trim().length < 20) {
+          throw new Error("Summary too short, likely invalid");
+        }
+        
+        return uniqueSummary;
       },
       {
         maxAttempts: 3,
