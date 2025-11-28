@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 const MeetingCard = () => {
   const [isUploading, setIsUploading] = React.useState(false);
@@ -99,7 +100,21 @@ const MeetingCard = () => {
         {...getRootProps()}
       >
         <CardContent className="flex flex-col items-center justify-center p-10 flex-1">
-          {!isUploading && (
+          {!project ? (
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="rounded-full bg-primary/10 p-4">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">
+                  Select a project
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Choose a project from the sidebar to upload meetings
+                </p>
+              </div>
+            </div>
+          ) : !isUploading ? (
             <>
               <motion.div
                 animate={{ y: [0, -10, 0] }}
@@ -125,7 +140,7 @@ const MeetingCard = () => {
                 <input className="hidden" {...getInputProps()} />
               </Button>
             </>
-          )}
+          ) : null}
 
           {isUploading && (
             <div className="flex flex-col items-center gap-4">

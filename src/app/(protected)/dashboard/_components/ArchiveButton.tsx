@@ -25,9 +25,13 @@ const ArchiveButton = () => {
   const refetch = useRefetch();
   const [open, setOpen] = React.useState(false);
 
+  if (!projectId) {
+    return null;
+  }
+
   const handleArchive = () => {
     archiveProject.mutate(
-      { projectId: projectId },
+      { projectId },
       {
         onSuccess: () => {
           toast.success("Project archived successfully");

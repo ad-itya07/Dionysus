@@ -19,6 +19,10 @@ const InviteButton = () => {
   const [open, setOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
+  if (!projectId) {
+    return null;
+  }
+
   const inviteLink = `${window.location.origin}/join/${projectId}`;
 
   const handleCopy = () => {

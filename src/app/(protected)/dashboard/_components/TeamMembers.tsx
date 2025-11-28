@@ -14,9 +14,16 @@ import {
 
 const TeamMembers = () => {
   const { projectId } = useProject();
-  const { data: members } = api.project.getTeamMembers.useQuery({ projectId });
+  const { data: members } = api.project.getTeamMembers.useQuery(
+    { projectId: projectId ?? "" },
+    {
+      enabled: !!projectId && projectId !== "",
+      staleTime: 60000, // Cache for 1 minute
+      refetchOnWindowFocus: false,
+    },
+  );
 
-  if (!members || members.length === 0) {
+  if (!projectId || !members || members.length === 0) {
     return null;
   }
 

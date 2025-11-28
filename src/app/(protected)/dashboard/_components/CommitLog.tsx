@@ -12,7 +12,34 @@ type Props = {};
 
 const CommitLog = ({}: Props) => {
   const { projectId, project } = useProject();
-  const { data: commits } = api.project.getCommits.useQuery({ projectId });
+  const { data: ingestionStatus } = api.project.getIngestionStatus.useQuery(
+    { projectId: projectId ?? "" },
+    { enabled: !!projectId && projectId !== "" },
+  );
+  
+  const { data: commits } = api.project.getCommits.useQuery(
+    { projectId: projectId ?? "" },
+    {
+      enabled: !!projectId && projectId !== "",
+      staleTime: 10000,
+      refetchOnWindowFocus: true,
+      refetchInterval: (query) => {
+        // Poll every 10 seconds if ingestion is in progress
+        if (ingestionStatus?.ingestionStatus === "IN_PROGRESS") {
+          return 10000;
+        }
+        return false; // Don't poll if completed
+      },
+    },
+  );
+
+  if (!projectId) {
+    return (
+      <div className="rounded-xl border border-border/50 bg-card/50 p-8 text-center">
+        <p className="text-sm text-muted-foreground">Select a project to view commits</p>
+      </div>
+    );
+  }
 
   if (!commits || commits.length === 0) {
     return (
@@ -24,7 +51,7 @@ const CommitLog = ({}: Props) => {
 
   return (
     <div className="space-y-6">
-      {commits.map((commit, commitIdx) => (
+      {commits.slice(0, 5).map((commit, commitIdx) => (
         <motion.div
           key={commit.id}
           initial={{ opacity: 0, x: -20 }}
