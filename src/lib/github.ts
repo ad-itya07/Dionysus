@@ -1,19 +1,15 @@
-// bun run src/lib/github.ts
-// npx tsx src/lib/github.ts
+/**
+ * GitHub commit fetching and processing with pagination, retries, and proper error handling
+ */
 
 import { db } from "@/server/db";
-import { Octokit } from "octokit";
-import axios from "axios";
-import { aiSummariseCommit } from "./gemini";
+import { GitHubClient } from "./ingestion/github-client";
+import { summariseCommit } from "./ingestion/summarizer";
 import pLimit from "p-limit";
 
-const limit = pLimit(10); // Limit to 2 concurrent requests
+const limit = pLimit(10); // Limit concurrent requests
 
-export const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
-});
-
-type Response = {
+type CommitResponse = {
   commitHash: string;
   commitMessage: string;
   commitAuthorName: string;
@@ -21,117 +17,134 @@ type Response = {
   commitDate: string;
 };
 
-export const getCommitHashes = async (
-  githubUrl: string,
-): Promise<Response[]> => {
-  const [owner, repo] = githubUrl.split("/").slice(-2);
-  if (!owner || !repo) {
-    throw new Error("Invalid GitHub URL");
+/**
+ * Parse GitHub URL to extract owner and repo
+ */
+function parseGithubUrl(githubUrl: string): { owner: string; repo: string } {
+  const parts = githubUrl.split("/").filter(Boolean);
+  const repoIndex = parts.indexOf("github.com");
+  if (repoIndex === -1 || parts.length < repoIndex + 3) {
+    throw new Error("Invalid GitHub URL format");
   }
-  const { data } = await octokit.rest.repos.listCommits({
-    owner,
-    repo,
+  const owner = parts[repoIndex + 1];
+  const repo = parts[repoIndex + 2]?.replace(/\.git$/, "");
+  if (!owner || !repo) {
+    throw new Error("Invalid GitHub URL: missing owner or repo");
+  }
+  return { owner, repo };
+}
+
+/**
+ * Get all commits with pagination support
+ */
+export async function getCommitHashes(
+  githubUrl: string,
+  githubToken?: string,
+  maxCommits?: number,
+): Promise<CommitResponse[]> {
+  const { owner, repo } = parseGithubUrl(githubUrl);
+  const client = new GitHubClient({ token: githubToken });
+  return client.getAllCommits(owner, repo, maxCommits);
+}
+
+/**
+ * Poll and process commits for a project
+ */
+export async function pollCommits(
+  projectId: string,
+  githubToken?: string,
+): Promise<{ count: number }> {
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    select: { githubUrl: true },
   });
 
-  const sortedCommits = data.sort(
-    (a: any, b: any) =>
-      new Date(b.commit.author.date).getTime() -
-      new Date(a.commit.author.date).getTime(),
-  ) as any[];
-  return sortedCommits.slice(0, 10).map((commit: any) => ({
-    commitHash: commit.sha as string,
-    commitMessage: commit.commit.message ?? "",
-    commitAuthorName: commit.commit?.author?.name ?? "",
-    commitAuthorAvatar: commit.author?.avatar_url ?? "",
-    commitDate: commit.commit?.author?.date ?? "",
-  }));
-};
+  if (!project?.githubUrl) {
+    throw new Error("Project has no GitHub URL");
+  }
 
-export const pollCommits = async (projectId: string) => {
-  const { project, githubUrl } = await fetchProjectGithubUrl(projectId);
-  const commitHashes = await getCommitHashes(githubUrl);
-  const unprocessedCommits = await (
-    await filterUnprocessedCommits(projectId, commitHashes)
-  ).slice(0, 10);
-  // const summaryResponses = await Promise.allSettled(
-  //   unprocessedCommits.map((commit) => {
-  //     return summariseCommit(githubUrl, commit.commitHash);
-  //   }),
-  // );
-  // const summaries = summaryResponses.map((response) => {
-  //   if (response.status === "fulfilled") {
-  //     return response.value as string;
-  //   }
-  //   return "";
-  // });
+  console.log(`📥 Fetching commits for project ${projectId}...`);
 
+  // Get all commits with pagination (process up to 100 at a time)
+  const allCommits = await getCommitHashes(project.githubUrl, githubToken, 100);
+
+  // Filter out already processed commits
+  const unprocessedCommits = await filterUnprocessedCommits(
+    projectId,
+    allCommits,
+  );
+
+  if (unprocessedCommits.length === 0) {
+    console.log(`✅ No new commits to process for project ${projectId}`);
+    return { count: 0 };
+  }
+
+  console.log(
+    `📝 Processing ${unprocessedCommits.length} new commits...`,
+  );
+
+  // Process commits with summaries (with concurrency limit)
   const commitsWithSummaries = await Promise.all(
     unprocessedCommits.map((commit) =>
       limit(async () => {
         try {
-          const summary = await summariseCommit(githubUrl, commit.commitHash);
+          const summary = await summariseCommit(
+            project.githubUrl,
+            commit.commitHash,
+            githubToken,
+          );
           return { ...commit, summary };
         } catch (err) {
-          console.error(`❌ Failed to summarize ${commit.commitHash}`, err);
-          return { ...commit, summary: "" };
+          console.error(
+            `❌ Failed to summarize commit ${commit.commitHash}:`,
+            err instanceof Error ? err.message : String(err),
+          );
+          // Return with fallback summary instead of empty
+          return {
+            ...commit,
+            summary: `Commit: ${commit.commitMessage.split("\n")[0]}`,
+          };
         }
       }),
     ),
   );
 
-  const commits = await db.commit.createMany({
-    data: commitsWithSummaries.map((commit, index) => {
-      console.log(`processing commit ${index + 1}: ${commit.commitHash}`);
-      return {
-        projectId: projectId,
-        commitHash: commit.commitHash,
-        commitMessage: commit.commitMessage,
-        commitAuthorName: commit.commitAuthorName,
-        commitAuthorAvatar: commit.commitAuthorAvatar,
-        commitDate: commit.commitDate,
-        summary: commit.summary,
-      };
-    }),
+  // Insert commits (using createMany with skipDuplicates)
+  const result = await db.commit.createMany({
+    data: commitsWithSummaries.map((commit) => ({
+      projectId: projectId,
+      commitHash: commit.commitHash,
+      commitMessage: commit.commitMessage,
+      commitAuthorName: commit.commitAuthorName,
+      commitAuthorAvatar: commit.commitAuthorAvatar,
+      commitDate: new Date(commit.commitDate),
+      summary: commit.summary,
+    })),
+    skipDuplicates: true, // Skip if commit already exists (idempotency)
   });
 
-  return commits;
-};
+  console.log(
+    `✅ Successfully processed ${result.count} commits for project ${projectId}`,
+  );
 
-async function summariseCommit(githubUrl: string, commitHash: string) {
-  // Get the diff, and pass the diff into AI
-  const { data } = await axios.get(`${githubUrl}/commit/${commitHash}.diff`, {
-    headers: {
-      Accept: "application/vnd.github.v3.diff",
-    },
-  });
-  return (await aiSummariseCommit(data)) || "";
+  return { count: result.count };
 }
 
-async function fetchProjectGithubUrl(projectId: string) {
-  const project = await db.project.findUnique({
-    where: { id: projectId },
-    select: { githubUrl: true },
-  });
-  if (!project?.githubUrl) {
-    throw new Error("Project has no GitHub URL");
-  }
-  return { project, githubUrl: project?.githubUrl };
-}
-
+/**
+ * Filter out commits that have already been processed
+ */
 async function filterUnprocessedCommits(
   projectId: string,
-  commitHashes: Response[],
-) {
+  commitHashes: CommitResponse[],
+): Promise<CommitResponse[]> {
   const processedCommits = await db.commit.findMany({
     where: { projectId },
+    select: { commitHash: true },
   });
-  const unprocessedCommits = commitHashes.filter(
-    (commit) =>
-      !processedCommits.some(
-        (processedCommits) => processedCommits.commitHash === commit.commitHash,
-      ),
-  );
-  return unprocessedCommits;
-}
 
-// await pollCommits("cm85o7z6r0000kvjwoh74g2vw").then(console.log);
+  const processedHashes = new Set(processedCommits.map((c) => c.commitHash));
+
+  return commitHashes.filter(
+    (commit) => !processedHashes.has(commit.commitHash),
+  );
+}
