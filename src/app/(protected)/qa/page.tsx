@@ -14,16 +14,43 @@ import MDEditor from "@uiw/react-md-editor";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import AskQuestionCrad from "../dashboard/_components/AskQuestionCard";
 import CodeReferences from "../dashboard/_components/CodeReferences";
+import EmptyProjectState from "../dashboard/_components/EmptyProjectState";
 import { motion } from "framer-motion";
 import { MessageSquare, Calendar } from "lucide-react";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
 
 const QaPage = () => {
-  const { projectId } = useProject();
-  const { data: questions } = api.project.getQuestions.useQuery({ projectId });
+  const { project, projectId, projects } = useProject();
+  const { data: questions } = api.project.getQuestions.useQuery(
+    { projectId: projectId ?? "" },
+    {
+      enabled: !!projectId && projectId !== "",
+      staleTime: 30000, // Cache for 30 seconds
+      refetchOnWindowFocus: false,
+    },
+  );
   const [questionIndex, setQuestionIndex] = React.useState(0);
   const question = questions?.[questionIndex];
+
+  if (!project) {
+    return (
+      <div className="space-y-8">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="space-y-2"
+        >
+          <h1 className="text-3xl font-bold tracking-tight">Q&A</h1>
+          <p className="text-muted-foreground">
+            Ask questions and view saved answers about your project
+          </p>
+        </motion.div>
+        <EmptyProjectState hasProjects={(projects?.length ?? 0) > 0} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -107,8 +134,8 @@ const QaPage = () => {
             </div>
 
             {question && (
-              <SheetContent className="sm:max-w-[85vw] bg-card/95 backdrop-blur-xl border-border/50">
-                <SheetHeader className="border-b border-border/50 pb-4 mb-4">
+              <SheetContent className="sm:max-w-[85vw] flex flex-col bg-card/95 backdrop-blur-xl border-border/50">
+                <SheetHeader className="border-b border-border/50 pb-4 mb-4 flex-shrink-0">
                   <SheetTitle className="text-xl font-semibold">
                     {question.question}
                   </SheetTitle>
@@ -117,18 +144,25 @@ const QaPage = () => {
                     {question.createdAt.toLocaleDateString()}
                   </div>
                 </SheetHeader>
-                <div className="space-y-6">
-                  <div data-color-mode="dark">
-                    <ScrollArea className="max-h-[50vh] pr-4">
-                      <MDEditor.Markdown source={question.answer} />
+                <div className="space-y-6 flex-1 min-h-0 flex flex-col">
+                  <div className="flex-1 min-h-0" data-color-mode="dark">
+                    <ScrollArea className="h-full pr-4">
+                      <div className="pr-4">
+                        <MDEditor.Markdown source={question.answer} />
+                      </div>
                     </ScrollArea>
                   </div>
 
                   {question.filesReferences &&
+                    Array.isArray(question.filesReferences) &&
                     question.filesReferences.length > 0 && (
-                      <div className="border-t border-border/50 pt-6">
+                      <div className="border-t border-border/50 pt-6 flex-shrink-0">
                         <CodeReferences
-                          filesReferences={question.filesReferences}
+                          filesReferences={question.filesReferences as {
+                            fileName: string;
+                            sourceCode: string;
+                            summary: string;
+                          }[]}
                         />
                       </div>
                     )}

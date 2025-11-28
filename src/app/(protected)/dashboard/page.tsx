@@ -8,8 +8,11 @@ import AskQuestionCard from "./_components/AskQuestionCard";
 import MeetingCard from "./_components/MeetingCard";
 import ArchiveButton from "./_components/ArchiveButton";
 import TeamMembers from "./_components/TeamMembers";
+import IngestionStatus from "./_components/IngestionStatus";
+import EmptyProjectState from "./_components/EmptyProjectState";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
+import { api } from "@/trpc/react";
 
 const InviteButton = dynamic(() => import("./_components/InviteButton"), {
   ssr: false,
@@ -18,10 +21,62 @@ const InviteButton = dynamic(() => import("./_components/InviteButton"), {
 type Props = {};
 
 const page = ({}: Props) => {
-  const { project } = useProject();
+  const { project, projectId, projects } = useProject();
+  const { data: ingestionStatus } = api.project.getIngestionStatus.useQuery(
+    { projectId: projectId ?? "" },
+    {
+      enabled: !!projectId && projectId !== "",
+      staleTime: 10000, // Cache for 10 seconds
+      refetchOnWindowFocus: false,
+      refetchInterval: (query) => {
+        // Only poll if ingestion is in progress
+        const data = query.state.data;
+        if (data?.ingestionStatus === "IN_PROGRESS") {
+          return 5000; // Poll every 5 seconds
+        }
+        return false; // Don't poll if completed or failed
+      },
+    },
+  );
+
+  // Show empty state if no project selected
+  if (!project) {
+    return (
+      <div className="space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="flex flex-col gap-4"
+        >
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Overview of your project activity and insights
+            </p>
+          </div>
+        </motion.div>
+        <EmptyProjectState hasProjects={(projects?.length ?? 0) > 0} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Ingestion Status Banner */}
+      {ingestionStatus &&
+        ingestionStatus.ingestionStatus !== "COMPLETED" && (
+          <IngestionStatus
+            status={ingestionStatus.ingestionStatus}
+            progress={ingestionStatus.ingestionProgress}
+            filesProcessed={ingestionStatus.ingestionFilesProcessed ?? undefined}
+            filesTotal={ingestionStatus.ingestionFilesTotal ?? undefined}
+            commitsProcessed={ingestionStatus.ingestionCommitsProcessed ?? undefined}
+            commitsTotal={ingestionStatus.ingestionCommitsTotal ?? undefined}
+            errorMessage={ingestionStatus.ingestionErrorMessage}
+          />
+        )}
+
       {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

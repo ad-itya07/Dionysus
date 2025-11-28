@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import useRefetch from "@/hooks/use-refetch";
 import MeetingCard from "../dashboard/_components/MeetingCard";
+import EmptyProjectState from "../dashboard/_components/EmptyProjectState";
 import { motion } from "framer-motion";
 import { Calendar, FileText, Trash2, Eye, Loader2 } from "lucide-react";
 import {
@@ -25,15 +26,35 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const MeetingsPage = () => {
-  const { projectId } = useProject();
+  const { project, projectId, projects } = useProject();
   const { data: meetings } = api.project.getMeetings.useQuery(
-    { projectId },
+    { projectId: projectId ?? "" },
     {
+      enabled: !!projectId,
       refetchInterval: 4000,
     },
   );
   const deleteMeeting = api.project.deleteMeeting.useMutation();
   const refetch = useRefetch();
+
+  if (!project) {
+    return (
+      <div className="space-y-8">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="space-y-2"
+        >
+          <h1 className="text-3xl font-bold tracking-tight">Meetings</h1>
+          <p className="text-muted-foreground">
+            Upload and analyze meeting recordings with AI
+          </p>
+        </motion.div>
+        <EmptyProjectState hasProjects={(projects?.length ?? 0) > 0} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -72,7 +93,7 @@ const MeetingsPage = () => {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {meetings.map((meeting, index) => (
+            {meetings.map((meeting: any, index: number) => (
               <motion.div
                 key={meeting.id}
                 initial={{ opacity: 0, y: 20 }}
