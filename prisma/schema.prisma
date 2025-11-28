@@ -41,6 +41,11 @@ model Project {
 
     deletedAt DateTime?
 
+    ingestionStatus        IngestionStatus @default(PENDING)
+    ingestionStartedAt     DateTime?
+    ingestionCompletedAt   DateTime?
+    ingestionErrorMessage  String?
+
     userToProjects UserToProject[]
 
     commits Commit[]
@@ -81,6 +86,10 @@ model Commit {
     commitDate         DateTime
 
     summary String
+
+    @@unique([projectId, commitHash])
+    @@index([commitHash])
+    @@index([projectId])
 }
 
 model SourceCodeEmbedding {
@@ -90,9 +99,14 @@ model SourceCodeEmbedding {
     sourceCode       String
     fileName         String
     summary          String
+    chunkIndex       Int      @default(0)
 
     projectId String
     project   Project @relation(fields: [projectId], references: [id])
+
+    @@unique([projectId, fileName, chunkIndex])
+    @@index([projectId])
+    @@index([fileName])
 }
 
 model Question {
@@ -146,6 +160,13 @@ model Issue {
 enum MeetingStatus {
     PROCESSING
     COMPLETED
+}
+
+enum IngestionStatus {
+    PENDING
+    IN_PROGRESS
+    COMPLETED
+    FAILED
 }
 
 model StripeTransaction {

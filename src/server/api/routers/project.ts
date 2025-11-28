@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { pollCommits } from "@/lib/github";
-import { checkCredits, indexGithubRepo } from "@/lib/github-loader";
+import { checkCredits } from "@/lib/github-loader";
+import { ingestRepository } from "@/lib/ingestion/orchestrator";
+import { IngestionStatus } from "@prisma/client";
 
 export const projectRouter = createTRPCRouter({
   createProject: protectedProcedure
@@ -27,10 +28,12 @@ export const projectRouter = createTRPCRouter({
         throw new Error("Insufficient credits");
       }
 
+      // Create project with PENDING status
       const project = await ctx.db.project.create({
         data: {
           githubUrl: input.githubUrl,
           name: input.name,
+          ingestionStatus: IngestionStatus.PENDING,
           userToProjects: {
             create: {
               userId: ctx.user.userId!,
@@ -38,12 +41,22 @@ export const projectRouter = createTRPCRouter({
           },
         },
       });
-      await indexGithubRepo(project.id, input.githubUrl, input.githubToken);
-      await pollCommits(project.id);
+
+      // Start ingestion asynchronously (don't await - let it run in background)
+      ingestRepository(project.id, input.githubUrl, {
+        githubToken: input.githubToken,
+      }).catch((error) => {
+        console.error(`Failed to ingest project ${project.id}:`, error);
+      });
+
+      // Deduct credits only after successful project creation
+      // Note: In production, you might want to deduct credits only after successful ingestion
+      // For now, we deduct immediately as the old code did
       await ctx.db.user.update({
         where: { id: ctx.user.userId! },
         data: { credits: { decrement: fileCount } },
       });
+
       return project;
     }),
 
@@ -66,9 +79,17 @@ export const projectRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      pollCommits(input.projectId); //updated
+      // Poll commits asynchronously (don't block the query)
+      import("@/lib/github")
+        .then(({ pollCommits }) => pollCommits(input.projectId))
+        .catch((error) => {
+          console.error(`Failed to poll commits for ${input.projectId}:`, error);
+        });
+
       return await ctx.db.commit.findMany({
         where: { projectId: input.projectId },
+        orderBy: { commitDate: "desc" },
+        take: 50, // Limit to recent commits
       });
     }),
   saveAnswer: protectedProcedure

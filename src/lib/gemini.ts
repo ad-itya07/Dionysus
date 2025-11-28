@@ -2,8 +2,9 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Document } from "@langchain/core/documents";
+import { env } from "@/env";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: "gemini-2.0-flash",
 });
@@ -44,10 +45,10 @@ export const aiSummariseCommit = async (diff: string) => {
   return response.response.text();
 };
 
-export async function summariseCode(doc: Document) {
+export async function summariseCode(doc: Document): Promise<string> {
   console.log("getting summary for ", doc.metadata.source);
   try {
-    const code = doc.pageContent.slice(0, 10000); // Limit t 10000 characters
+    const code = doc.pageContent.slice(0, 10000); // Limit to 10000 characters
     const response = await model.generateContent([
       `You are an intelligent senior software engineer who specialises in onboarding junior software engineers onto projects`,
       `You are onboarding a junior software engineer and explaining to them the purpose of the ${doc.metadata.source} file
@@ -55,20 +56,34 @@ export async function summariseCode(doc: Document) {
       ---
       ${code}
       ---
-      Give a summary no more than 100 words of the code aboce`,
+      Give a summary no more than 100 words of the code above`,
     ]);
 
     return response.response.text();
   } catch (error) {
-    return "";
+    console.error("Error summarizing code:", error);
+    throw error; // Let retry logic handle it
   }
 }
 
-export async function generateEmbedding(summary: string) {
-  const model = genAI.getGenerativeModel({
+export async function generateEmbedding(summary: string): Promise<number[]> {
+  const embeddingModel = genAI.getGenerativeModel({
     model: "text-embedding-004",
   });
-  const result = await model.embedContent(summary);
+  const result = await embeddingModel.embedContent(summary);
   const embedding = result.embedding;
+  
+  // Validate embedding
+  if (!embedding || !embedding.values || embedding.values.length !== 768) {
+    throw new Error(`Invalid embedding: expected 768 dimensions, got ${embedding.values?.length || 0}`);
+  }
+  
+  // Validate all values are finite numbers
+  for (const value of embedding.values) {
+    if (!Number.isFinite(value)) {
+      throw new Error("Invalid embedding: contains non-finite values");
+    }
+  }
+  
   return embedding.values;
 }

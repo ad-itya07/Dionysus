@@ -1,89 +1,51 @@
-// npx tsx src/lib/github-loader.ts
+/**
+ * GitHub repository loader with improved error handling and pagination
+ */
 
 import { GithubRepoLoader } from "@langchain/community/document_loaders/web/github";
 import { Document } from "@langchain/core/documents";
-import { generateEmbedding, summariseCode } from "./gemini";
-import { db } from "@/server/db";
-import { Octokit } from "octokit";
+import { GitHubClient } from "./ingestion/github-client";
 
-const getDefaultBranch = async (
-  githubOwner: string,
-  githubRepo: string,
-  githubToken?: string,
-) => {
-  const octokit = new Octokit({ auth: githubToken });
-  const { data } = await octokit.rest.repos.get({
-    owner: githubOwner,
-    repo: githubRepo,
-  });
-  return data.default_branch;
-};
-
-const getFileCount = async (
-  path: string,
-  octokit: Octokit,
-  githubOwner: string,
-  githubRepo: string,
-  acc: number = 0,
-) => {
-  const { data } = await octokit.rest.repos.getContent({
-    owner: githubOwner,
-    repo: githubRepo,
-    path,
-  });
-  if (!Array.isArray(data) && data.type === "file") {
-    return acc + 1;
+/**
+ * Parse GitHub URL to extract owner and repo
+ */
+function parseGithubUrl(githubUrl: string): { owner: string; repo: string } {
+  const parts = githubUrl.split("/").filter(Boolean);
+  const repoIndex = parts.indexOf("github.com");
+  if (repoIndex === -1 || parts.length < repoIndex + 3) {
+    throw new Error("Invalid GitHub URL format");
   }
-  if (Array.isArray(data)) {
-    let fileCount = 0;
-    const directories: string[] = [];
-
-    for (const item of data) {
-      if (item.type === "dir") {
-        directories.push(item.path);
-      } else {
-        fileCount++;
-      }
-    }
-    if (directories.length > 0) {
-      const directoryCounts = await Promise.all(
-        directories.map((dirPath) =>
-          getFileCount(dirPath, octokit, githubOwner, githubRepo, 0),
-        ),
-      );
-      fileCount += directoryCounts.reduce((acc, count) => acc + count, 0);
-    }
-    return acc + fileCount;
+  const owner = parts[repoIndex + 1];
+  const repo = parts[repoIndex + 2]?.replace(/\.git$/, "");
+  if (!owner || !repo) {
+    throw new Error("Invalid GitHub URL: missing owner or repo");
   }
-  return acc;
-};
+  return { owner, repo };
+}
 
-export const checkCredits = async (githubUrl: string, githubToken?: string) => {
-  // Find out how many files are in the repo
-  const octokit = new Octokit({ auth: githubToken });
-  const githubOwner = githubUrl.split("/")[3];
-  const githubRepo = githubUrl.split("/")[4];
-
-  if (!githubOwner || !githubRepo) {
-    throw new Error("Invalid github url");
-  }
-
-  const fileCount = await getFileCount("", octokit, githubOwner, githubRepo, 0);
-  return fileCount;
-};
-
-export const loadGithubRepo = async (
+/**
+ * Check credits by counting files in repository
+ */
+export async function checkCredits(
   githubUrl: string,
   githubToken?: string,
-) => {
-  const githubOwner = githubUrl.split("/")[3];
-  const githubRepo = githubUrl.split("/")[4];
+): Promise<number> {
+  const { owner, repo } = parseGithubUrl(githubUrl);
+  const client = new GitHubClient({ token: githubToken });
+  return client.getFileCount(owner, repo);
+}
 
-  if (!githubOwner || !githubRepo) {
-    throw new Error("Invalid github url");
-  }
+/**
+ * Load GitHub repository files
+ */
+export async function loadGithubRepo(
+  githubUrl: string,
+  githubToken?: string,
+): Promise<Document[]> {
+  const { owner, repo } = parseGithubUrl(githubUrl);
+  const client = new GitHubClient({ token: githubToken });
 
-  const branch = await getDefaultBranch(githubOwner, githubRepo, githubToken);
+  const branch = await client.getDefaultBranch(owner, repo);
 
   const loader = new GithubRepoLoader(githubUrl, {
     accessToken: githubToken || "",
@@ -93,56 +55,26 @@ export const loadGithubRepo = async (
       "yarn.lock",
       "pnpm-lock.yaml",
       "bun.lockb",
+      "*.lock",
+      "*.log",
+      "node_modules/**",
+      ".git/**",
+      ".next/**",
+      "dist/**",
+      "build/**",
     ],
     recursive: true,
     unknown: "warn",
     maxConcurrency: 5,
   });
-  const docs = await loader.load();
-  return docs;
-};
 
-export const indexGithubRepo = async (
-  projectId: string,
-  githubUrl: string,
-  githubToken?: string,
-) => {
-  const docs = await loadGithubRepo(githubUrl, githubToken);
-  const allEmbeddings = await generateEmbeddings(docs);
-  await Promise.allSettled(
-    allEmbeddings.map(async (embedding, index) => {
-      console.log(`processing ${index} of ${allEmbeddings.length}`);
-      if (!embedding) return;
-
-      const sourceCodeEmbedding = await db.sourceCodeEmbedding.create({
-        data: {
-          summary: embedding.summary,
-          sourceCode: embedding.sourceCode,
-          fileName: embedding.fileName,
-          projectId,
-        },
-      });
-
-      //   Currently, prisma don't support vector. So run a war sql query for vector
-      await db.$executeRaw`
-      UPDATE "SourceCodeEmbedding"
-      SET "summaryEmbedding" = ${embedding.embedding}::vector
-      WHERE "id" = ${sourceCodeEmbedding.id}`;
-    }),
-  );
-};
-
-const generateEmbeddings = async (docs: Document[]) => {
-  return await Promise.all(
-    docs.map(async (doc) => {
-      const summary = await summariseCode(doc);
-      const embedding = await generateEmbedding(summary);
-      return {
-        summary,
-        embedding,
-        sourceCode: JSON.parse(JSON.stringify(doc.pageContent)),
-        fileName: doc.metadata.source,
-      };
-    }),
-  );
-};
+  try {
+    const docs = await loader.load();
+    return docs;
+  } catch (error) {
+    console.error("Error loading GitHub repo:", error);
+    throw new Error(
+      `Failed to load repository: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
