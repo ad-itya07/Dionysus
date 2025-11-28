@@ -25,6 +25,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion } from "framer-motion";
 
 type Props = {};
 
@@ -51,43 +52,94 @@ const items = [
   },
 ];
 
-
 const AppSidebar = ({}: Props) => {
   const pathname = usePathname();
-
-  const {projects, projectId, setProjectId} = useProject();
-
+  const { projects, projectId, setProjectId, project } = useProject();
   const { open } = useSidebar();
+
   return (
     <Sidebar collapsible="icon" variant="floating">
-      <SidebarHeader>
-        <div className="flex items-center gap-2">
-          <Image src="/logo.png" alt="logo" width={40} height={40} />
+      <SidebarHeader className="border-b border-border/40">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-3 px-2 py-4"
+        >
+          <div className="relative">
+            <Image
+              src="/logo.png"
+              alt="logo"
+              width={36}
+              height={36}
+              className="rounded-lg"
+            />
+            <div className="absolute inset-0 rounded-lg bg-primary/20 blur-md" />
+          </div>
           {open && (
-            <h1 className="text-xl font-bold text-primary/80">Dionysus</h1>
+            <div className="flex-1 min-w-0">
+              {project ? (
+                <>
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {project.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    Active Project
+                  </p>
+                </>
+              ) : (
+                <p className="text-3xl font-semibold text-foreground truncate bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+                  Dionysus
+                </p>
+              )}
+            </div>
           )}
-        </div>
+        </motion.div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="gap-4">
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2">
+            Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => {
+            <SidebarMenu className="gap-1">
+              {items.map((item, index) => {
+                const isActive = pathname === item.url;
                 return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <Link
-                        href={item.url}
-                        className={cn({
-                          "!bg-primary !text-white": pathname === item.url,
-                        })}
+                  <motion.div
+                    key={item.title}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        className={cn(
+                          "group relative transition-all duration-200",
+                          isActive &&
+                            "bg-primary/10 text-primary border-l-2 border-primary"
+                        )}
                       >
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                        <Link href={item.url} className="flex items-center gap-3">
+                          <item.icon
+                            className={cn(
+                              "h-5 w-5 transition-colors",
+                              isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                            )}
+                          />
+                          <span className="font-medium">{item.title}</span>
+                          {isActive && (
+                            <motion.div
+                              layoutId="activeIndicator"
+                              className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary rounded-r"
+                              transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                            />
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </motion.div>
                 );
               })}
             </SidebarMenu>
@@ -95,42 +147,69 @@ const AppSidebar = ({}: Props) => {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Your Projects</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2">
+            Projects
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {projects?.map((project) => {
+            <SidebarMenu className="gap-1">
+              {projects?.map((project, index) => {
+                const isSelected = project.id === projectId;
                 return (
-                  <SidebarMenuItem key={project.name}>
-                    <SidebarMenuButton asChild>
-                      <div onClick={() => setProjectId(project.id)}>
+                  <motion.div
+                    key={project.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: (items.length + index) * 0.05 }}
+                  >
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        className={cn(
+                          "group transition-all duration-200",
+                          isSelected &&
+                            "bg-primary/10 border-l-2 border-primary"
+                        )}
+                      >
                         <div
-                          className={cn(
-                            "flex size-6 items-center justify-center rounded-sm border bg-white text-sm text-primary",
-                            {
-                              "bg-primary text-white": project.id === projectId,
-                            },
-                          )}
+                          onClick={() => setProjectId(project.id)}
+                          className="flex items-center gap-3 cursor-pointer"
                         >
-                          {project.name[0]}
+                          <div
+                            className={cn(
+                              "flex size-8 items-center justify-center rounded-lg font-semibold text-sm transition-all duration-200 border-2",
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary shadow-glow-cyan-sm"
+                                : "bg-secondary text-muted-foreground border-border group-hover:border-primary/50 group-hover:text-foreground"
+                            )}
+                          >
+                            {project.name?.[0]?.toUpperCase() || ''}
+                          </div>
+                          <span className="font-medium truncate">{project.name}</span>
                         </div>
-                        <span>{project.name}</span>
-                      </div>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </motion.div>
                 );
               })}
 
-              <div className="h-2"></div>
-
               {open && (
-                <SidebarMenuItem>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="pt-2 px-2"
+                >
                   <Link href="/create">
-                    <Button size="sm" variant={"outline"} className="w-fit">
-                      <Plus />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full border-primary/30 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
                       Create Project
                     </Button>
                   </Link>
-                </SidebarMenuItem>
+                </motion.div>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
