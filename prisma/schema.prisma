@@ -45,6 +45,11 @@ model Project {
     ingestionStartedAt     DateTime?
     ingestionCompletedAt   DateTime?
     ingestionErrorMessage  String?
+    ingestionProgress      Int             @default(0)
+    ingestionFilesTotal    Int?
+    ingestionFilesProcessed Int            @default(0)
+    ingestionCommitsTotal  Int?
+    ingestionCommitsProcessed Int          @default(0)
 
     userToProjects UserToProject[]
 
@@ -165,6 +170,7 @@ enum MeetingStatus {
 enum IngestionStatus {
     PENDING
     IN_PROGRESS
+    READY
     COMPLETED
     FAILED
 }
