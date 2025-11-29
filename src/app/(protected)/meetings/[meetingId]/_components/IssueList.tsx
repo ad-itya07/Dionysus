@@ -1,4 +1,5 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,49 +15,89 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { api, RouterOutputs } from "@/trpc/react";
-import { VideoIcon } from "lucide-react";
+import { api } from "@/trpc/react";
+import { VideoIcon, Clock, Loader2 } from "lucide-react";
 import React from "react";
+import { motion } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
+
+type Issue = {
+  id: string;
+  gist: string;
+  headline: string;
+  summary: string;
+  start: string;
+  end: string;
+  createdAt: Date;
+};
 
 function IssueCard({
   issue,
 }: {
-  issue: NonNullable<
-    RouterOutputs["project"]["getMeetingById"]
-  >["issues"][number];
+  issue: Issue;
 }) {
   const [open, setOpen] = React.useState(false);
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="bg-card/95 backdrop-blur-xl border-border/50 max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{issue.gist}</DialogTitle>
-            <DialogDescription>
-              {issue.createdAt.toLocaleDateString()}
+            <DialogTitle className="text-xl font-semibold">
+              {issue.gist}
+            </DialogTitle>
+            <DialogDescription className="flex items-center gap-2 mt-2">
+              <Clock className="h-4 w-4" />
+              {issue.createdAt.toLocaleDateString()} • {issue.start} - {issue.end}
             </DialogDescription>
-            <p className="text-gray-600">{issue.headline}</p>
-            <blockquote className="mt-2 border-l-4 border-gray-300 bg-gray-50 p-4">
-              <span className="text-sm text-gray-600">
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <h4 className="font-medium text-foreground mb-2">Headline</h4>
+              <p className="text-muted-foreground">{issue.headline}</p>
+            </div>
+            <div className="rounded-lg border-l-4 border-primary/50 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 text-sm text-primary mb-2">
+                <Clock className="h-4 w-4" />
                 {issue.start} - {issue.end}
-              </span>
-              <p className="font-medium italic leading-relaxed text-gray-900">
+              </div>
+              <p className="text-foreground leading-relaxed italic">
                 {issue.summary}
               </p>
-            </blockquote>
-          </DialogHeader>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
-      <Card className="relative">
-        <CardHeader>
-          <CardTitle className="text-xl">{issue.gist}</CardTitle>
-          <div className="border-b"></div>
-          <CardDescription>{issue.headline}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => setOpen(true)}>Details</Button>
-        </CardContent>
-      </Card>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.3 }}
+      >
+        <Card className="group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all hover:border-primary/50 hover:shadow-glow-cyan-sm h-full">
+          <CardHeader>
+            <CardTitle className="text-lg">{issue.gist}</CardTitle>
+            <CardDescription className="line-clamp-2">
+              {issue.headline}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {issue.start} - {issue.end}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setOpen(true)}
+                className="border-primary/30 hover:border-primary/50 hover:bg-primary/5"
+              >
+                View Details
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </>
   );
 }
@@ -66,6 +107,7 @@ type Props = {
 };
 
 const IssueList = ({ meetingId }: Props) => {
+  // @ts-expect-error - API endpoint exists but type may not be fully defined
   const { data: meeting, isLoading } = api.project.getMeetingById.useQuery(
     { meetingId },
     {
@@ -73,30 +115,73 @@ const IssueList = ({ meetingId }: Props) => {
     },
   );
 
-  if (isLoading || !meeting) return <div>Loading...</div>;
-  return (
-    <div className="p-8">
-      <div className="mx-auto flex max-w-2xl items-center justify-between gap-x-8 border-b pb-6 lg:mx-0 lg:max-w-none">
-        <div className="flex items-center gap-x-6">
-          <div className="rounded-full border bg-white p-3">
-            <VideoIcon className="h-6 w-6" />
-          </div>
-          <h1>
-            <div className="text-sm leading-6 text-gray-600">
-              Meeting on {""} {meeting.createdAt.toLocaleDateString()}
-            </div>
-
-            <div className="mt-1 text-base font-semibold leading-6 text-gray-900">
-              {meeting.name}
-            </div>
-          </h1>
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-64" />
+          <Skeleton className="h-6 w-96" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-48" />
+          ))}
         </div>
       </div>
-      <div className="h-4"></div>
-      <div className="grid grid-cols-1 sm:grid-cols-3">
-        {meeting.issues.map((issue) => (
-          <IssueCard key={issue.id} issue={issue} />
-        ))}
+    );
+  }
+
+  if (!meeting) {
+    return (
+      <div className="rounded-xl border border-border/50 bg-card/50 p-12 text-center">
+        <p className="text-muted-foreground">Meeting not found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-center gap-4 p-6 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5"
+      >
+        <div className="rounded-lg bg-primary/20 p-3">
+          <VideoIcon className="h-6 w-6 text-primary" />
+        </div>
+        <div className="flex-1">
+          <div className="text-sm text-muted-foreground mb-1">
+            Meeting on {meeting.createdAt.toLocaleDateString()}
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">{meeting.name}</h1>
+        </div>
+        {meeting.status === "PROCESSING" && (
+          <div className="flex items-center gap-2 text-primary">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm font-medium">Processing...</span>
+          </div>
+        )}
+      </motion.div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Issues</h2>
+          <span className="text-sm text-muted-foreground">
+            ({meeting.issues.length})
+          </span>
+        </div>
+        {meeting.issues.length === 0 ? (
+          <Card className="border-border/50 bg-card/50 p-12 text-center">
+            <p className="text-muted-foreground">No issues found</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {meeting.issues.map((issue: Issue, index: number) => (
+              <IssueCard key={issue.id} issue={issue} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

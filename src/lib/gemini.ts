@@ -2,16 +2,34 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Document } from "@langchain/core/documents";
+import { env } from "@/env";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: "gemini-2.0-flash",
 });
 
+// Rate limiting to prevent API issues
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 200; // 200ms between requests
+
+async function rateLimitedRequest<T>(fn: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await new Promise((resolve) =>
+      setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest),
+    );
+  }
+  lastRequestTime = Date.now();
+  return fn();
+}
+
 export const aiSummariseCommit = async (diff: string) => {
-  // https://github.com/owner/repo/commit/<commitHash>.diff
-  const response = await model.generateContent([
-    `Your are an expert programmer, and you are trying to summarize a git file.
+  return rateLimitedRequest(async () => {
+    // https://github.com/owner/repo/commit/<commitHash>.diff
+    const response = await model.generateContent([
+      `Your are an expert programmer, and you are trying to summarize a git file.
         Reminders about the git diff format:
         For every file, there are a few metadata lines, like (for example):
         \`\`\`
@@ -39,36 +57,65 @@ export const aiSummariseCommit = async (diff: string) => {
         The last comment does not include the file names, because there were more than two relevant files in the hypothetical commit.
         Do not include parts of the example in your summary.
         It is given only as an example of appropirate comments.`,
-    `Please summarise the following diff file: \n\n${diff}`,
-  ]);
-  return response.response.text();
+      `Please summarise the following diff file: \n\n${diff}`,
+    ]);
+    return response.response.text();
+  });
 };
 
-export async function summariseCode(doc: Document) {
-  console.log("getting summary for ", doc.metadata.source);
-  try {
-    const code = doc.pageContent.slice(0, 10000); // Limit t 10000 characters
-    const response = await model.generateContent([
-      `You are an intelligent senior software engineer who specialises in onboarding junior software engineers onto projects`,
-      `You are onboarding a junior software engineer and explaining to them the purpose of the ${doc.metadata.source} file
-      Here is the code:
-      ---
-      ${code}
-      ---
-      Give a summary no more than 100 words of the code aboce`,
-    ]);
+export async function summariseCode(doc: Document): Promise<string> {
+  return rateLimitedRequest(async () => {
+    console.log("getting summary for ", doc.metadata.source);
+    try {
+      const code = doc.pageContent.slice(0, 10000); // Limit to 10000 characters
+      
+      // Include file name in prompt to ensure unique context
+      const fileName = doc.metadata.source as string;
+      
+      const response = await model.generateContent([
+        `You are an intelligent senior software engineer who specialises in onboarding junior software engineers onto projects`,
+        `You are onboarding a junior software engineer and explaining to them the purpose of the ${fileName} file.
+        IMPORTANT: Provide a unique, specific summary for THIS file. Do not give generic responses.
+        Here is the code:
+        ---
+        ${code}
+        ---
+        Give a summary no more than 100 words of the code above. Be specific to this file's content and purpose.`,
+      ]);
 
-    return response.response.text();
-  } catch (error) {
-    return "";
-  }
+      const summary = response.response.text();
+      
+      // Validate summary is meaningful
+      if (!summary || summary.trim().length < 20) {
+        throw new Error("Summary too short or empty");
+      }
+      
+      return summary;
+    } catch (error) {
+      console.error("Error summarizing code:", error);
+      throw error; // Let retry logic handle it
+    }
+  });
 }
 
-export async function generateEmbedding(summary: string) {
-  const model = genAI.getGenerativeModel({
+export async function generateEmbedding(summary: string): Promise<number[]> {
+  const embeddingModel = genAI.getGenerativeModel({
     model: "text-embedding-004",
   });
-  const result = await model.embedContent(summary);
+  const result = await embeddingModel.embedContent(summary);
   const embedding = result.embedding;
+  
+  // Validate embedding
+  if (!embedding || !embedding.values || embedding.values.length !== 768) {
+    throw new Error(`Invalid embedding: expected 768 dimensions, got ${embedding.values?.length || 0}`);
+  }
+  
+  // Validate all values are finite numbers
+  for (const value of embedding.values) {
+    if (!Number.isFinite(value)) {
+      throw new Error("Invalid embedding: contains non-finite values");
+    }
+  }
+  
   return embedding.values;
 }

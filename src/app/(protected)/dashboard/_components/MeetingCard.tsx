@@ -1,6 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ArrowUpLeftFromSquare, Presentation, Upload } from "lucide-react";
 import React from "react";
 import { useDropzone } from "react-dropzone";
@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
+import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 const MeetingCard = () => {
   const [isUploading, setIsUploading] = React.useState(false);
@@ -87,48 +89,81 @@ const MeetingCard = () => {
   });
   
   return (
-    <Card
-      className="col-span-2 flex flex-col items-center justify-center p-10"
-      {...getRootProps()}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="h-full"
     >
-      {!isUploading && (
-        <>
-          <Presentation className="h-10 w-10 animate-bounce"></Presentation>
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">
-            Create a new meeting
-          </h3>
-          <p className="mt-1 text-center text-sm text-gray-500">
-            Analyse your meeting with Dionysus.
-            <br />
-            Powered by AI.
-          </p>
-          <div className="mt-6">
-            <Button disabled={isUploading}>
-              <Upload className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
-              Upload Meeting
-              <input className="hidden" {...getInputProps()} />
-            </Button>
-          </div>
-        </>
-      )}
+      <Card
+        className="group relative overflow-hidden border-2 border-dashed border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/50 hover:bg-primary/5 hover:shadow-glow-cyan-sm cursor-pointer h-full flex flex-col"
+        {...getRootProps()}
+      >
+        <CardContent className="flex flex-col items-center justify-center p-10 flex-1">
+          {!project ? (
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="rounded-full bg-primary/10 p-4">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-foreground">
+                  Select a project
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Choose a project from the sidebar to upload meetings
+                </p>
+              </div>
+            </div>
+          ) : !isUploading ? (
+            <>
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="rounded-full bg-primary/10 p-4 mb-4"
+              >
+                <Presentation className="h-8 w-8 text-primary" />
+              </motion.div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                Create a New Meeting
+              </h3>
+              <p className="text-center text-sm text-muted-foreground mb-6 max-w-xs">
+                Analyse your meeting with Dionysus.
+                <br />
+                <span className="text-primary">Powered by AI.</span>
+              </p>
+              <Button
+                disabled={isUploading}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow-cyan-sm hover:shadow-glow-cyan transition-all"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Meeting
+                <input className="hidden" {...getInputProps()} />
+              </Button>
+            </>
+          ) : null}
 
-      {isUploading && (
-        <div className="">
-          <CircularProgressbar
-            value={progress}
-            text={`${progress}%`}
-            className="size-20"
-            styles={buildStyles({
-              pathColor: "black",
-              textColor: "black",
-            })}
-          />
-          <p className="text-center text-sm text-gray-500">
-            Uploading your meeting...
-          </p>
-        </div>
-      )}
-    </Card>
+          {isUploading && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <CircularProgressbar
+                  value={progress}
+                  text={`${progress}%`}
+                  className="size-24"
+                  styles={buildStyles({
+                    pathColor: "hsl(188, 100%, 50%)",
+                    textColor: "hsl(188, 100%, 50%)",
+                    trailColor: "hsl(222, 47%, 18%)",
+                  })}
+                />
+              </div>
+              <p className="text-center text-sm text-muted-foreground">
+                Uploading your meeting...
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 };
 

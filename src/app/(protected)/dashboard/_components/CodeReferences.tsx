@@ -1,10 +1,12 @@
 "use client";
+
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { lucario } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { cn } from "@/lib/utils";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { FileCode } from "lucide-react";
 
 type Props = {
   filesReferences: {
@@ -20,25 +22,27 @@ const CodeReferences = ({ filesReferences }: Props) => {
   const [tab, setTab] = React.useState(filesReferences[0]?.fileName);
 
   return (
-    <div className="m-auto max-w-[70vw]">
-      <Tabs value={tab} onValueChange={setTab}>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <FileCode className="h-4 w-4 text-primary" />
+        Code References
+      </div>
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
         <ScrollArea className="w-full overflow-auto">
-          <div className="flex gap-2 rounded-md bg-gray-200 p-1">
+          <TabsList className="inline-flex h-10 items-center justify-start rounded-lg bg-secondary/50 p-1 w-full">
             {filesReferences.map((file) => (
-              <button
-                onClick={() => setTab(file.fileName)}
+              <TabsTrigger
                 key={file.fileName}
+                value={file.fileName}
                 className={cn(
-                  "max-w-[80vw] whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted-foreground hover:text-primary-foreground",
-                  {
-                    "bg-primary text-primary-foreground": tab === file.fileName,
-                  },
+                  "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-glow-cyan-sm",
+                  "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {file.fileName}
-              </button>
+              </TabsTrigger>
             ))}
-          </div>
+          </TabsList>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
@@ -46,17 +50,22 @@ const CodeReferences = ({ filesReferences }: Props) => {
           <TabsContent
             key={file.fileName}
             value={file.fileName}
-            className="max-w-7xl rounded-md"
+            className="mt-4 rounded-lg border border-border/50 overflow-hidden"
           >
-            <div className="max-h-[25vh] w-full overflow-auto">
+            <ScrollArea className="max-h-[40vh] w-full">
               <SyntaxHighlighter
                 language="typescript"
-                style={lucario}
-                className="overflow-auto"
+                style={vscDarkPlus}
+                customStyle={{
+                  margin: 0,
+                  borderRadius: "0.5rem",
+                  background: "hsl(222, 47%, 12%)",
+                }}
+                className="!bg-transparent"
               >
                 {file.sourceCode}
               </SyntaxHighlighter>
-            </div>
+            </ScrollArea>
           </TabsContent>
         ))}
       </Tabs>

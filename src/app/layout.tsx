@@ -7,6 +7,7 @@ import { TRPCReactProvider } from "@/trpc/react";
 
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "next-themes";
 
 export const metadata: Metadata = {
   title: "Dionysus",
@@ -19,10 +20,17 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className={`${GeistSans.variable}`}>
+      <html lang="en" className={`${GeistSans.variable} dark`} suppressHydrationWarning>
         <body>
-          <TRPCReactProvider>{children}</TRPCReactProvider>
-          <Toaster richColors />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange={false}
+          >
+            <TRPCReactProvider>{children}</TRPCReactProvider>
+            <Toaster richColors theme="dark" />
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

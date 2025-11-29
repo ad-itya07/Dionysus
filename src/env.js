@@ -11,6 +11,17 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    // GitHub API - Optional fallback token for public repos
+    GITHUB_TOKEN: z.string().optional(),
+    // Google Gemini AI - Required for summarization and embeddings
+    GEMINI_API_KEY: z.string().min(1),
+    // Clerk Authentication - Required for user auth
+    CLERK_SECRET_KEY: z.string().min(1),
+    // Stripe Payments - Required for payment processing
+    STRIPE_SECRET_KEY: z.string().min(1),
+    STRIPE_WEBHOOK_SECRET: z.string().min(1),
+    // AssemblyAI - Required for meeting transcription
+    ASSEMBLYAI_API_KEY: z.string().min(1),
   },
 
   /**
@@ -19,7 +30,13 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    // Clerk Authentication - Required for frontend
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1),
+    // Stripe - Required for redirects
+    NEXT_PUBLIC_BASE_URL: z.string().url(),
+    // Cloudinary - Required for meeting uploads
+    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: z.string().min(1),
+    NEXT_PUBLIC_UNSIGNED_PRESET_NAME: z.string().min(1),
   },
 
   /**
@@ -29,7 +46,19 @@ export const env = createEnv({
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
-    // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+    GITHUB_TOKEN: process.env.GITHUB_TOKEN,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    ASSEMBLYAI_API_KEY: process.env.ASSEMBLYAI_API_KEY,
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+    NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:
+      process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+    NEXT_PUBLIC_UNSIGNED_PRESET_NAME:
+      process.env.NEXT_PUBLIC_UNSIGNED_PRESET_NAME,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
