@@ -3,9 +3,12 @@
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { IngestionStatus as IngestionStatusEnum } from "@prisma/client";
-import { AlertCircle, CheckCircle2, Loader2, Clock } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Clock, Check } from "lucide-react";
 import { motion } from "framer-motion";
+import { api } from "@/trpc/react";
+import useProject from "@/hooks/use-project";
 
 interface IngestionStatusProps {
   status: IngestionStatusEnum;
@@ -26,6 +29,16 @@ const IngestionStatus = ({
   commitsTotal,
   errorMessage,
 }: IngestionStatusProps) => {
+  const { projectId } = useProject();
+  const utils = api.useUtils();
+  const markComplete = api.project.markIngestionComplete.useMutation({
+    onSuccess: () => {
+      // Refetch ingestion status to update UI
+      utils.project.getIngestionStatus.invalidate({ projectId: projectId ?? "" });
+      utils.project.getProjects.invalidate();
+    },
+  });
+
   const getStatusConfig = () => {
     switch (status) {
       case IngestionStatusEnum.PENDING:
@@ -134,6 +147,41 @@ const IngestionStatus = ({
 
             {status === IngestionStatusEnum.FAILED && errorMessage && (
               <p className="text-sm text-destructive mt-1">{errorMessage}</p>
+            )}
+
+            {/* Manual completion button for stuck processing */}
+            {status === IngestionStatusEnum.IN_PROGRESS && 
+             (progress >= 60 || 
+              (filesProcessed !== undefined && filesTotal !== undefined && filesProcessed >= filesTotal) ||
+              (commitsProcessed && commitsProcessed > 0)) && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Processing appears stuck. If files and commits are already processed, you can manually mark ingestion as complete.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (projectId) {
+                      markComplete.mutate({ projectId });
+                    }
+                  }}
+                  disabled={markComplete.isPending || !projectId}
+                  className="w-full"
+                >
+                  {markComplete.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Marking as complete...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="mr-2 h-3 w-3" />
+                      Mark as Complete
+                    </>
+                  )}
+                </Button>
+              </div>
             )}
           </div>
         </div>

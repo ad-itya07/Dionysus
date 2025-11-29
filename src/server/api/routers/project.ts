@@ -386,4 +386,51 @@ export const projectRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  markIngestionComplete: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      // Verify user has access to this project
+      const userProject = await ctx.db.userToProject.findFirst({
+        where: {
+          userId: ctx.user.userId!,
+          projectId: input.projectId,
+        },
+      });
+
+      if (!userProject) {
+        throw new Error("Project not found or access denied");
+      }
+
+      // Get current project to preserve file/commit counts
+      const project = await ctx.db.project.findUnique({
+        where: { id: input.projectId },
+        select: {
+          ingestionFilesTotal: true,
+          ingestionFilesProcessed: true,
+          ingestionCommitsTotal: true,
+          ingestionCommitsProcessed: true,
+        },
+      });
+
+      if (!project) {
+        throw new Error("Project not found");
+      }
+
+      // Mark ingestion as completed
+      await ctx.db.project.update({
+        where: { id: input.projectId },
+        data: {
+          ingestionStatus: IngestionStatus.COMPLETED,
+          ingestionCompletedAt: new Date(),
+          ingestionErrorMessage: null,
+          ingestionProgress: 100,
+          // Preserve existing counts if they exist, otherwise set defaults
+          ingestionFilesTotal: project.ingestionFilesTotal ?? project.ingestionFilesProcessed,
+          ingestionCommitsTotal: project.ingestionCommitsTotal ?? project.ingestionCommitsProcessed,
+        },
+      });
+
+      return { success: true };
+    }),
 });
