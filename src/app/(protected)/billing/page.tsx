@@ -158,6 +158,9 @@ const BillingPage = () => {
                   if your project has 100 files, you will need 100 credits to index it.
                 </p>
                 <p className="text-muted-foreground">
+                  <strong className="text-foreground">Free Tier:</strong> New users receive 60 free credits to get started.
+                </p>
+                <p className="text-muted-foreground">
                   Credits are consumed when you create a new project. Make sure you have
                   enough credits before linking a repository.
                 </p>

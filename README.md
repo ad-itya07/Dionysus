@@ -88,7 +88,7 @@ Visit the live platform here: [Dionysus](https://dionysus-se36.vercel.app/)
 
 1. Visit the live platform: [Dionysus](https://dionysus-se36.vercel.app/).
 2. Sign up or log in using **Clerk** authentication.
-3. Purchase credits to start using the platform, by default each user will be given 150 credits.
+3. Start using the platform - each user gets 60 free credits to get started. Purchase more credits as needed.
 4. Link your GitHub repository to get started.
 5. Collaborate, upload, and manage your projects effectively.
 

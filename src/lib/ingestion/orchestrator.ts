@@ -5,7 +5,7 @@
 import { db } from "@/server/db";
 import { loadGithubRepo } from "../github-loader";
 import { summariseCode } from "./summarizer";
-import { chunkCode, processEmbeddings, CodeChunk } from "./embedder";
+import { chunkCode, CodeChunk } from "./embedder";
 import { pollCommits } from "../github";
 import { Document } from "@langchain/core/documents";
 import { IngestionStatus } from "@prisma/client";
@@ -14,6 +14,43 @@ export interface IngestionOptions {
   githubToken?: string;
   maxCommits?: number;
   maxCommitsToSummarize?: number;
+}
+
+/**
+ * Store files without generating embeddings (cost optimization)
+ */
+async function storeFilesWithoutEmbeddings(
+  projectId: string,
+  chunks: CodeChunk[],
+): Promise<void> {
+  // Store files in SourceCodeEmbedding table without embeddings
+  // This allows on-demand text search while saving embedding generation costs
+  for (const chunk of chunks) {
+    // Check if already exists (idempotency)
+    const existing = await db.sourceCodeEmbedding.findUnique({
+      where: {
+        projectId_fileName_chunkIndex: {
+          projectId,
+          fileName: chunk.fileName,
+          chunkIndex: chunk.chunkIndex,
+        },
+      },
+    });
+
+    if (!existing) {
+      await db.sourceCodeEmbedding.create({
+        data: {
+          projectId,
+          fileName: chunk.fileName,
+          chunkIndex: chunk.chunkIndex,
+          sourceCode: chunk.content,
+          summary: chunk.summary,
+          // summaryEmbedding is left as null (no embedding generated)
+        },
+      });
+    }
+  }
+  console.log(`✅ Stored ${chunks.length} file chunks for on-demand search`);
 }
 
 /**
@@ -172,9 +209,10 @@ export async function ingestRepository(
 
     console.log(`✅ Generated ${chunks.length} chunks from ${processed} files`);
 
-    // Stage 4: Generate and store embeddings (60-80%)
-    console.log(`🧮 Stage 4: Generating embeddings...`);
-    await processEmbeddings(projectId, chunks);
+    // Stage 4: Store files without embeddings (60-80%)
+    // Skip embedding generation to save costs - we'll use text search instead
+    console.log(`💾 Stage 4: Storing files for on-demand search...`);
+    await storeFilesWithoutEmbeddings(projectId, chunks);
     await updateProgress(projectId, 80, processed, allDocs.length);
 
     // Stage 5: Fetch and process commits (80-95%)
