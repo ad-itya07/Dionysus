@@ -42,16 +42,18 @@ const page = ({}: Props) => {
   // Show empty state if no project selected
   if (!project) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 sm:space-y-8">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex flex-col gap-4"
+          transition={{ duration: 0.5 }}
+          className="flex flex-col gap-3"
         >
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground text-sm mt-1">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+              Dashboard
+            </h1>
+            <p className="text-muted-foreground text-sm sm:text-base mt-2 leading-relaxed">
               Overview of your project activity and insights
             </p>
           </div>
@@ -62,65 +64,79 @@ const page = ({}: Props) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 sm:space-y-8">
       {/* Ingestion Status Banner */}
       {ingestionStatus &&
         ingestionStatus.ingestionStatus !== "COMPLETED" && (
-          <IngestionStatus
-            status={ingestionStatus.ingestionStatus}
-            progress={ingestionStatus.ingestionProgress}
-            filesProcessed={ingestionStatus.ingestionFilesProcessed ?? undefined}
-            filesTotal={ingestionStatus.ingestionFilesTotal ?? undefined}
-            commitsProcessed={ingestionStatus.ingestionCommitsProcessed ?? undefined}
-            commitsTotal={ingestionStatus.ingestionCommitsTotal ?? undefined}
-            errorMessage={ingestionStatus.ingestionErrorMessage}
-          />
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <IngestionStatus
+              status={ingestionStatus.ingestionStatus}
+              progress={ingestionStatus.ingestionProgress}
+              filesProcessed={ingestionStatus.ingestionFilesProcessed ?? undefined}
+              filesTotal={ingestionStatus.ingestionFilesTotal ?? undefined}
+              commitsProcessed={ingestionStatus.ingestionCommitsProcessed ?? undefined}
+              commitsTotal={ingestionStatus.ingestionCommitsTotal ?? undefined}
+              errorMessage={ingestionStatus.ingestionErrorMessage}
+            />
+          </motion.div>
         )}
 
-      {/* Page Header */}
+      {/* Enhanced Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex flex-col gap-4"
+        transition={{ duration: 0.5 }}
+        className="flex flex-col gap-4 sm:gap-6"
       >
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground text-sm mt-1">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="space-y-2">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+              Dashboard
+            </h1>
+            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-2xl">
               Overview of your project activity and insights
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <TeamMembers />
             <InviteButton />
             <ArchiveButton />
           </div>
         </div>
 
-        {/* GitHub Link Card */}
+        {/* Enhanced GitHub Link Card */}
         {project?.githubUrl && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="group relative overflow-hidden rounded-lg border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-3 shadow-glow-cyan-sm transition-all hover:border-primary/40 hover:shadow-glow-cyan"
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="group relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-primary/5 p-4 sm:p-5 shadow-glow-cyan-sm transition-all duration-300 hover:border-primary/50 hover:shadow-glow-cyan hover:scale-[1.02]"
           >
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/20 p-1.5">
-                <Github className="h-4 w-4 text-primary" />
-              </div>
+            <div className="flex items-center gap-3 sm:gap-4">
+              <motion.div
+                className="rounded-xl bg-primary/20 p-2.5 group-hover:bg-primary/30 transition-colors"
+                whileHover={{ rotate: 5, scale: 1.1 }}
+                transition={{ type: "spring", stiffness: 400 }}
+              >
+                <Github className="h-5 w-5 text-primary" aria-hidden="true" />
+              </motion.div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground">
+                <p className="text-xs sm:text-sm font-semibold text-foreground mb-1">
                   Linked Repository
                 </p>
                 <Link
                   href={project.githubUrl}
-                  className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors mt-0.5 truncate"
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm text-primary hover:text-primary/80 transition-colors group/link focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded"
                   target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Open ${project.githubUrl} in new tab`}
                 >
                   <span className="truncate">{project.githubUrl}</span>
-                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                  <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 transition-transform group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5" aria-hidden="true" />
                 </Link>
               </div>
             </div>
@@ -128,29 +144,29 @@ const page = ({}: Props) => {
         )}
       </motion.div>
 
-      {/* Quick Actions Grid */}
+      {/* Enhanced Quick Actions Grid */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.4 }}
-        className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch"
+        transition={{ delay: 0.2, duration: 0.5 }}
+        className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 lg:items-stretch"
       >
         <AskQuestionCard />
         <MeetingCard />
       </motion.div>
 
-      {/* Commit Log */}
+      {/* Enhanced Commit Log Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.4 }}
-        className="space-y-3"
+        transition={{ delay: 0.3, duration: 0.5 }}
+        className="space-y-4 sm:space-y-5"
       >
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">
+        <div className="space-y-1">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
             Recent Commits
           </h2>
-          <p className="text-muted-foreground text-xs mt-0.5">
+          <p className="text-muted-foreground text-sm sm:text-base">
             Latest activity from your repository
           </p>
         </div>

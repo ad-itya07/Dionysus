@@ -68,72 +68,95 @@ const CreatePage = () => {
     : true;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8 sm:space-y-10 px-4 sm:px-6 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="space-y-2"
+        transition={{ duration: 0.5 }}
+        className="space-y-3"
       >
-        <h1 className="text-3xl font-bold tracking-tight">Create New Project</h1>
-        <p className="text-muted-foreground">
-          Link your GitHub repository to get started with Dionysus
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+          Create New Project
+        </h1>
+        <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-2xl">
+          Link your GitHub repository to get started with Dionysus and unlock AI-powered insights
         </p>
       </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.4 }}
+        transition={{ delay: 0.1, duration: 0.5 }}
         className="grid gap-8 lg:grid-cols-2 items-start"
       >
-        <div className="hidden lg:block">
-          <img
-            src="/undraw_github.svg"
-            className="h-80 w-auto mx-auto"
-            alt="GitHub integration"
-          />
-        </div>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="hidden lg:flex items-center justify-center"
+        >
+          <div className="relative">
+            <img
+              src="/undraw_github.svg"
+              className="h-96 w-auto"
+              alt="GitHub integration illustration"
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent rounded-2xl blur-2xl -z-10" />
+          </div>
+        </motion.div>
 
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle>Project Details</CardTitle>
+        <Card className="border-border/70 bg-card/80 backdrop-blur-sm shadow-lg">
+          <CardHeader className="space-y-1 pb-6">
+            <CardTitle className="text-2xl">Project Details</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Fill in the information below to connect your repository
+            </p>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Project Name</label>
+                <label htmlFor="projectName" className="text-sm font-semibold text-foreground">
+                  Project Name
+                </label>
                 <Input
+                  id="projectName"
                   {...register("projectName", { required: true })}
                   placeholder="My Awesome Project"
                   required
-                  className="bg-secondary/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all"
+                  className="bg-secondary/70 border-border/70 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all h-11"
+                  aria-label="Project name"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">GitHub Repository URL</label>
+                <label htmlFor="repoUrl" className="text-sm font-semibold text-foreground">
+                  GitHub Repository URL
+                </label>
                 <Input
+                  id="repoUrl"
                   {...register("repoUrl", { required: true })}
                   placeholder="https://github.com/username/repo"
                   type="url"
                   required
-                  className="bg-secondary/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all"
+                  className="bg-secondary/70 border-border/70 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all h-11"
+                  aria-label="GitHub repository URL"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">
-                  GitHub Token <span className="text-muted-foreground">(Optional)</span>
+                <label htmlFor="githubToken" className="text-sm font-semibold text-foreground">
+                  GitHub Token <span className="text-muted-foreground font-normal">(Optional)</span>
                 </label>
                 <Input
+                  id="githubToken"
                   {...register("githubToken")}
                   placeholder="ghp_xxxxxxxxxxxx"
                   type="password"
-                  className="bg-secondary/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 transition-all"
+                  className="bg-secondary/70 border-border/70 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all h-11"
+                  aria-label="GitHub personal access token (optional)"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Without a token, you may be limited to 60 credits per hour
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Without a token, you may be limited to 60 requests per hour
                 </p>
               </div>
 
@@ -141,29 +164,36 @@ const CreatePage = () => {
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
-                  className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2"
+                  transition={{ duration: 0.3 }}
+                  className="rounded-xl border border-primary/40 bg-gradient-to-br from-primary/10 to-primary/5 p-4 sm:p-5 space-y-3"
                 >
-                  <div className="flex items-start gap-2">
-                    <Info className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                    <div className="space-y-1 text-sm">
-                      <p className="text-foreground">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-lg bg-primary/20 p-2 flex-shrink-0">
+                      <Info className="h-4 w-4 text-primary" aria-hidden="true" />
+                    </div>
+                    <div className="space-y-2 text-sm flex-1">
+                      <p className="text-foreground font-medium">
                         This repository contains{" "}
-                        <strong className="text-primary">
+                        <strong className="text-primary font-bold">
                           {checkCredits.data?.fileCount}
                         </strong>{" "}
                         files
                       </p>
                       <p className="text-muted-foreground">
                         You have{" "}
-                        <strong className="text-primary">
+                        <strong className="text-primary font-semibold">
                           {checkCredits.data?.userCredits}
                         </strong>{" "}
                         credits remaining
                       </p>
                       {!hasEnoughCredits && (
-                        <p className="text-destructive text-xs">
+                        <motion.p
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="text-destructive text-xs font-medium bg-destructive/10 p-2 rounded-lg border border-destructive/20"
+                        >
                           Insufficient credits. Please purchase more credits to continue.
-                        </p>
+                        </motion.p>
                       )}
                     </div>
                   </div>
@@ -177,12 +207,13 @@ const CreatePage = () => {
                   checkCredits.isPending ||
                   !hasEnoughCredits
                 }
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow-cyan-sm hover:shadow-glow-cyan transition-all"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow-cyan-sm hover:shadow-glow-cyan transition-all h-12 text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 size="lg"
+                aria-label={createProject.isPending || checkCredits.isPending ? "Processing" : !!checkCredits.data ? "Create project" : "Check credits"}
               >
                 {createProject.isPending || checkCredits.isPending ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                     Processing...
                   </>
                 ) : !!checkCredits.data ? (
