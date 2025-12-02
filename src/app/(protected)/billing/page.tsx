@@ -6,12 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { createCheckoutSession } from "@/lib/stripe";
 import { api } from "@/trpc/react";
 import { Info, CreditCard, Loader2, Sparkles } from "lucide-react";
-import React from "react";
+import React, { Suspense } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-const BillingPage = () => {
+const BillingContent = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const utils = api.useUtils();
@@ -216,6 +216,25 @@ const BillingPage = () => {
         </Card>
       </motion.div>
     </div>
+  );
+};
+
+const BillingPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="space-y-8 sm:space-y-10 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-3">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+            Billing & Credits
+          </h1>
+          <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-2xl">
+            Manage your credits and purchase more to continue using Dionysus
+          </p>
+        </div>
+      </div>
+    }>
+      <BillingContent />
+    </Suspense>
   );
 };
 
