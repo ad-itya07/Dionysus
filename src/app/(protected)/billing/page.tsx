@@ -8,13 +8,36 @@ import { api } from "@/trpc/react";
 import { Info, CreditCard, Loader2, Sparkles } from "lucide-react";
 import React from "react";
 import { motion } from "framer-motion";
+import { useSearchParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const BillingPage = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const utils = api.useUtils();
   const { data: user } = api.project.getMyCredits.useQuery();
   const [creditsToBuy, setCreditsToBuy] = React.useState<number[]>([100]);
   const [isLoading, setIsLoading] = React.useState(false);
   const creditsToBuyAmount = creditsToBuy[0]!;
   const price = ((creditsToBuyAmount / 50) * 75).toFixed(2);
+
+  // Handle success redirect from Stripe
+  React.useEffect(() => {
+    const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
+    
+    if (success === "true") {
+      toast.success("Payment successful! Your credits have been added to your account.");
+      // Refetch credits to show updated amount
+      utils.project.getMyCredits.invalidate();
+      // Clean up URL
+      router.replace("/billing", { scroll: false });
+    } else if (canceled === "true") {
+      toast.info("Payment was canceled. You can try again anytime.");
+      // Clean up URL
+      router.replace("/billing", { scroll: false });
+    }
+  }, [searchParams, router, utils]);
 
   const handlePurchase = async () => {
     setIsLoading(true);
