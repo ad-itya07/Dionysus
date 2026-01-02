@@ -372,9 +372,10 @@ AI assistant will not invent anything that is not drawn directly from the contex
 Answer in markdown syntax, with code snippets if needed. Be as detailed as possible when answering, make sure there is new information in the answer.`;
 
   (async () => {
-    const { textStream } = await streamText({
-      model: google("gemini-2.0-flash-001"),
-      prompt: `${basePrompt}
+    try {
+      const { textStream } = await streamText({
+        model: google("gemini-2.5-flash-lite"),
+        prompt: `${basePrompt}
 
 START CONTEXT BLOCK
 ${context}
@@ -383,12 +384,16 @@ END CONTEXT BLOCK
 START QUESTION
 ${question}
 END QUESTION`,
-    });
-    for await (const delta of textStream) {
-      stream.update(delta);
+      });
+      for await (const delta of textStream) {
+        stream.update(delta);
+      }
+    } catch (error) {
+      console.error("Error asking question:", error);
+      stream.update("Sorry for the inconvenience. Your request couldn't be processed because either the AI provider usage limit has exceed or its undergoing an update. Please try asking the question again later :( ");
+    } finally {
+      stream.done();
     }
-
-    stream.done();
   })();
 
   return {
